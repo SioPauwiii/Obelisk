@@ -1,0 +1,24 @@
+CREATE TABLE public.users (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  email text,
+  full_name text,
+  avatar_url text,
+  wallet_address text UNIQUE,
+  auth_provider text,
+  is_verified_human boolean DEFAULT false,
+  humanity_score int DEFAULT 0,
+  country text,
+  pillar_preference text,
+  voucher_count int DEFAULT 0,
+  created_at timestamp DEFAULT now(),
+  updated_at timestamp DEFAULT now()
+);
+
+-- Add Privy DID as the primary user identifier
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS privy_did TEXT UNIQUE;
+
+-- Make wallet_address nullable (not available immediately for social/email logins)
+ALTER TABLE public.users ALTER COLUMN wallet_address DROP NOT NULL;
+
+-- Index for fast DID lookups
+CREATE INDEX IF NOT EXISTS idx_users_privy_did ON public.users (privy_did);
