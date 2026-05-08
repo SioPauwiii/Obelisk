@@ -134,7 +134,7 @@ export default function OnboardingPage() {
     // Guard: redirect if already onboarded
     useEffect(() => {
         if (!isLoading && user?.handle) {
-            router.replace("/dashboard");
+            router.replace("/feed");
         }
     }, [isLoading, user, router]);
 
@@ -162,7 +162,7 @@ export default function OnboardingPage() {
             }
 
             toastSuccess("Profile created successfully!");
-            router.replace("/dashboard");
+            router.replace("/feed");
         } catch {
             toastError("Network error. Please try again.");
         } finally {

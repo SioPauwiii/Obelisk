@@ -27,3 +27,46 @@ CREATE INDEX IF NOT EXISTS idx_users_privy_did ON public.users (privy_did);
 -- Add unique handle column for user identity (e.g. @rin)
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS handle TEXT UNIQUE;
 CREATE INDEX IF NOT EXISTS idx_users_handle ON public.users (handle);
+
+-- ─────────────────────────────────────────────────────
+-- Posts table — archived human moments
+-- ─────────────────────────────────────────────────────
+CREATE TABLE public.posts (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+
+  -- Social metadata (editable, queryable)
+  title text NOT NULL,
+  caption text,
+  pillar text NOT NULL,
+  location_name text,
+
+  -- Geo coordinates (from capture proof)
+  latitude double precision,
+  longitude double precision,
+
+  -- IPFS references (permanent storage)
+  image_cid text NOT NULL,
+  proof_cid text NOT NULL,
+  image_url text NOT NULL,
+  proof_url text NOT NULL,
+
+  -- Blockchain anchoring (nullable until minted)
+  tx_hash text,
+  contract_address text,
+  chain_id int DEFAULT 43113,
+
+  -- Verification
+  liveness_score double precision,
+  is_verified boolean DEFAULT false,
+  vouch_count int DEFAULT 0,
+
+  -- Timestamps
+  captured_at timestamptz NOT NULL,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_posts_user_id ON public.posts (user_id);
+CREATE INDEX IF NOT EXISTS idx_posts_pillar ON public.posts (pillar);
+CREATE INDEX IF NOT EXISTS idx_posts_created_at ON public.posts (created_at DESC);

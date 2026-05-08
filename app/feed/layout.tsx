@@ -22,7 +22,7 @@ export default function DashboardLayoutWrapper({
         router.replace("/signin");
     };
 
-    const username = user?.full_name ?? user?.email ?? "User";
+    const username = user?.handle ?? user?.email ?? "User";
 
     return (
         <DashboardLayout onLogout={handleLogout} username={username}>
