@@ -27,6 +27,10 @@ const createPostSchema = z.object({
     proofCid: z.string().min(1),
     imageUrl: z.string().url(),
     proofUrl: z.string().url(),
+    imageCids: z.array(z.string().min(1)).optional().default([]),
+    proofCids: z.array(z.string().min(1)).optional().default([]),
+    imageUrls: z.array(z.string().url()).optional().default([]),
+    proofUrls: z.array(z.string().url()).optional().default([]),
     livenessScore: z.number().optional().default(0),
     capturedAt: z.string().datetime(),
 });
@@ -49,6 +53,17 @@ function getUserIdFromCookie(req: NextRequest): string | null {
     if (!token) return null;
     const payload = decodeJwtPayload(token);
     return typeof payload?.sub === "string" ? payload.sub : null;
+}
+
+function normalizeSearchTerm(raw: string | null): string {
+    if (!raw) return "";
+    return raw.trim().replace(/[(),]/g, " ").replace(/\s+/g, " ").slice(0, 120);
+}
+
+function buildIlikePattern(term: string): string {
+    // postgrest uses * as wildcard for like/ilike filters
+    const sanitized = term.replace(/[*]/g, "");
+    return `*${sanitized}*`;
 }
 
 // ── POST: Create a new post ──────────────────────────
@@ -77,6 +92,10 @@ export async function POST(req: NextRequest) {
 
         const d = parsed.data;
         const supabase = createAdminClient();
+        const imageCids = d.imageCids.length ? d.imageCids : [d.imageCid];
+        const proofCids = d.proofCids.length ? d.proofCids : [d.proofCid];
+        const imageUrls = d.imageUrls.length ? d.imageUrls : [d.imageUrl];
+        const proofUrls = d.proofUrls.length ? d.proofUrls : [d.proofUrl];
 
         const { data: post, error: insertError } = await supabase
             .from("posts")
@@ -88,10 +107,14 @@ export async function POST(req: NextRequest) {
                 location_name: d.locationName,
                 latitude: d.latitude,
                 longitude: d.longitude,
-                image_cid: d.imageCid,
-                proof_cid: d.proofCid,
-                image_url: d.imageUrl,
-                proof_url: d.proofUrl,
+                image_cid: imageCids[0],
+                proof_cid: proofCids[0],
+                image_url: imageUrls[0],
+                proof_url: proofUrls[0],
+                image_cids: imageCids,
+                proof_cids: proofCids,
+                image_urls: imageUrls,
+                proof_urls: proofUrls,
                 liveness_score: d.livenessScore,
                 captured_at: d.capturedAt,
             })
@@ -134,6 +157,7 @@ export async function GET(req: NextRequest) {
             Math.max(1, parseInt(searchParams.get("limit") ?? "20")),
         );
         const pillar = searchParams.get("pillar");
+        const queryText = normalizeSearchTerm(searchParams.get("q"));
         const offset = (page - 1) * limit;
 
         const supabase = createAdminClient();
@@ -162,6 +186,44 @@ export async function GET(req: NextRequest) {
             VALID_PILLARS.includes(pillar as (typeof VALID_PILLARS)[number])
         ) {
             query = query.eq("pillar", pillar);
+        }
+
+        if (queryText) {
+            const pattern = buildIlikePattern(queryText);
+            const handleTerm = queryText.replace(/^@+/, "").trim();
+            const handlePattern = buildIlikePattern(handleTerm);
+
+            let matchingUserIds: string[] = [];
+            if (handleTerm) {
+                const { data: users, error: usersError } = await supabase
+                    .from("users")
+                    .select("id")
+                    .ilike("handle", handlePattern)
+                    .limit(100);
+
+                if (usersError) {
+                    console.error("User handle search failed:", usersError);
+                } else {
+                    matchingUserIds = (users ?? []).map((u) => u.id);
+                }
+            }
+
+            const orFilters = [
+                `title.ilike.${pattern}`,
+                `caption.ilike.${pattern}`,
+                `location_name.ilike.${pattern}`,
+                `image_cid.ilike.${pattern}`,
+                `proof_cid.ilike.${pattern}`,
+                `image_url.ilike.${pattern}`,
+                `proof_url.ilike.${pattern}`,
+                `tx_hash.ilike.${pattern}`,
+            ];
+
+            if (matchingUserIds.length > 0) {
+                orFilters.push(`user_id.in.(${matchingUserIds.join(",")})`);
+            }
+
+            query = query.or(orFilters.join(","));
         }
 
         const { data: posts, error: fetchError, count } = await query;

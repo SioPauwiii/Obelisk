@@ -8,8 +8,10 @@ import {
     RotateCw,
     AlertCircle,
     Loader2,
+    ArrowUpRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface CameraProps {
     // Proof shape expected by the app
@@ -26,10 +28,19 @@ interface CameraProps {
             [k: string]: unknown;
         };
     }) => void;
+    capturedImageUrl?: string | null;
+    onOpenArchive?: () => void;
+    onRetake?: () => void;
     className?: string;
 }
 
-export const Camera: React.FC<CameraProps> = ({ onCapture, className }) => {
+export const Camera: React.FC<CameraProps> = ({
+    onCapture,
+    capturedImageUrl,
+    onOpenArchive,
+    onRetake,
+    className,
+}) => {
     const {
         videoRef,
         canvasRef,
@@ -204,9 +215,6 @@ export const Camera: React.FC<CameraProps> = ({ onCapture, className }) => {
                     />
                     <canvas ref={canvasRef} className="hidden" />
 
-                    {/* Scanline Animation */}
-                    <div className="absolute inset-0 z-20 pointer-events-none bg-linear-to-b from-transparent via-cyan-500/10 to-transparent h-1/4 w-full animate-scan" />
-
                     {/* UI Overlays */}
                     <div className="absolute inset-0 z-30 flex flex-col justify-between p-6">
                         {/* Top Bar: Status */}
@@ -269,15 +277,22 @@ export const Camera: React.FC<CameraProps> = ({ onCapture, className }) => {
                                 </div>
                             )}
 
-                            <div className="flex items-center gap-12">
+                            <div className="flex items-center gap-4">
                                 <button
-                                    onClick={stopCamera}
+                                    onClick={
+                                        capturedImageUrl ? onRetake : stopCamera
+                                    }
                                     type="button"
-                                    aria-label="Stop camera"
-                                    className="p-3 rounded-full bg-white/6 border border-white/8 hover:bg-white/8 transition-colors"
+                                    aria-label={
+                                        capturedImageUrl
+                                            ? "Retake photo"
+                                            : "Stop camera"
+                                    }
+                                    className="p-3 rounded-full bg-white/6 border border-white/8 hover:bg-white/8 transition-colors shrink-0"
                                 >
                                     <RotateCw className="w-6 h-6 text-white/70" />
                                 </button>
+
                                 <div className="relative">
                                     <button
                                         onClick={handleCapture}
@@ -306,8 +321,7 @@ export const Camera: React.FC<CameraProps> = ({ onCapture, className }) => {
                                             )}
                                         >
                                             <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center">
-                                                {status === "verifying" ||
-                                                starting ? (
+                                                {starting ? (
                                                     <Loader2 className="w-6 h-6 text-black animate-spin" />
                                                 ) : (
                                                     <CameraIcon className="w-6 h-6 text-black" />
@@ -322,7 +336,43 @@ export const Camera: React.FC<CameraProps> = ({ onCapture, className }) => {
                                             <span className="pointer-events-none absolute -inset-2 rounded-full border-2 border-cyan-500 opacity-50 animate-pulse" />
                                         )}
                                 </div>
-                                <div className="w-14" /> {/* Spacer */}
+
+                                <button
+                                    type="button"
+                                    onClick={
+                                        capturedImageUrl
+                                            ? onOpenArchive
+                                            : undefined
+                                    }
+                                    disabled={!capturedImageUrl}
+                                    aria-label="Open archive preview"
+                                    className={cn(
+                                        "relative overflow-hidden w-16 h-16 rounded-2xl border shadow-[0_10px_30px_rgba(0,0,0,0.25)] transition-transform shrink-0",
+                                        capturedImageUrl
+                                            ? "border-emerald-400/40 bg-black/50 hover:scale-105"
+                                            : "border-white/10 bg-white/5 opacity-40 cursor-not-allowed",
+                                    )}
+                                >
+                                    {capturedImageUrl ? (
+                                        <>
+                                            <Image
+                                                src={capturedImageUrl}
+                                                alt="Captured thumbnail"
+                                                className="h-full w-full object-cover"
+                                                width={64}
+                                                height={64}
+                                            />
+                                            <div className="absolute inset-0 bg-linear-to-t from-black/45 via-transparent to-transparent" />
+                                            <div className="absolute bottom-1.5 right-1.5 rounded-full bg-white/90 p-1">
+                                                <ArrowUpRight className="w-3 h-3 text-black" />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold uppercase tracking-widest text-white/30">
+                                            Gallery
+                                        </div>
+                                    )}
+                                </button>
                             </div>
                         </div>
                     </div>
