@@ -17,9 +17,6 @@ export default function Lightbox({
     onClose,
 }: LightboxProps) {
     const [index, setIndex] = useState(initialIndex);
-    const [mounted, setMounted] = useState(false);
-
-    useEffect(() => setMounted(true), []);
 
     useEffect(() => {
         function onKey(e: KeyboardEvent) {
@@ -33,7 +30,7 @@ export default function Lightbox({
     }, [images.length, onClose]);
 
     if (!images || images.length === 0) return null;
-    if (!mounted) return null;
+    if (typeof document === "undefined") return null;
 
     const content = (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
