@@ -12,7 +12,6 @@ import {
     ShieldCheck,
     Database,
     Link2,
-    Share2,
     Clock,
     ArrowUpRight,
     ChevronDown,
@@ -336,9 +335,6 @@ function PostCard({ post }: { post: Post }) {
                 <button className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors">
                     <ArrowUpRight className="h-4 w-4" />
                     <span>Vouch ({post.vouch_count})</span>
-                </button>
-                <button className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">
-                    <Share2 className="h-4 w-4" /> Share
                 </button>
             </div>
         </article>
