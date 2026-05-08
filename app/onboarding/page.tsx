@@ -86,9 +86,15 @@ export default function OnboardingPage() {
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
     const [country, setCountry] = useState("");
-    const [pillar, setPillar] = useState("");
+    const [pillars, setPillars] = useState<string[]>([]);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const togglePillar = (id: string) => {
+        setPillars((prev) =>
+            prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
+        );
+    };
 
     // Guard: redirect if not authenticated
     useEffect(() => {
@@ -117,7 +123,7 @@ export default function OnboardingPage() {
                     firstName: firstName.trim(),
                     lastName: lastName.trim(),
                     country,
-                    pillarPreference: pillar,
+                    pillarPreference: pillars,
                 }),
             });
 
@@ -151,7 +157,7 @@ export default function OnboardingPage() {
     const canProceedStep0 =
         firstName.trim().length >= 2 && lastName.trim().length >= 1;
     const canProceedStep1 = country.length > 0;
-    const canFinish = pillar.length > 0;
+    const canFinish = pillars.length > 0;
 
     return (
         // Changed min-h-svh to h-svh to lock the outer grid strictly to the viewport height
@@ -312,14 +318,14 @@ export default function OnboardingPage() {
 
                                 <div className="mt-8 space-y-3">
                                     {PILLARS.map((p) => {
-                                        const isSelected = pillar === p.id;
+                                        const isSelected = pillars.includes(p.id);
                                         const Icon = p.icon;
 
                                         return (
                                             <button
                                                 key={p.id}
                                                 type="button"
-                                                onClick={() => setPillar(p.id)}
+                                                onClick={() => togglePillar(p.id)}
                                                 className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-all ${
                                                     isSelected
                                                         ? "border-cyan-500 bg-cyan-50 ring-1 ring-cyan-500 dark:bg-cyan-500/10"
@@ -424,7 +430,7 @@ export default function OnboardingPage() {
                             of human history.&rdquo;
                         </p>
                         <footer className="text-sm font-semibold text-cyan-400/80 tracking-wide uppercase">
-                            — Obelisk Initiative
+                            — OneDev PH
                         </footer>
                     </blockquote>
                 </div>
