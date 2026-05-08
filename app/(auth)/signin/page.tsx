@@ -3,6 +3,47 @@
 import { useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useAuth, type LoginMethod } from "@/hooks/useAuth";
+
+// ─────────────────────────────────────────────────────
+// Login Page — Privy-based social auth
+//
+// Three login methods: Google, Apple, Email
+// No passwords, no seed phrases, no crypto UI
+// Wallet creation happens silently in the background
+// ─────────────────────────────────────────────────────
+
+export default function LoginPage() {
+    const router = useRouter();
+    const { login, isAuthenticated, isLoading, authError, clearError } =
+        useAuth();
+    const [activeMethod, setActiveMethod] = useState<LoginMethod | null>(null);
+    const [lastMethod, setLastMethod] = useState<LoginMethod | null>(null);
+
+    // Redirect once authenticated
+    useEffect(() => {
+        if (isAuthenticated && !isLoading) {
+            router.push("/dashboard");
+        }
+    }, [isAuthenticated, isLoading, router]);
+
+    useEffect(() => {
+        if (authError) {
+            setActiveMethod(null);
+        }
+    }, [authError]);
+
+    const handleLogin = (method: LoginMethod) => {
+        clearError();
+        setActiveMethod(method);
+        setLastMethod(method);
+        login(method);
+    };
+
+    const handleReset = () => {
+        clearError();
+        setActiveMethod(null);
+    };
 import { useLoginWithOAuth } from "@privy-io/react-auth";
 import { usePrivyAuth } from "@/hooks/usePrivyAuth";
 import { LoginWithEmail } from "@/components/auth/LoginWithEmail";
@@ -66,10 +107,49 @@ export default function LoginPage() {
                                 </p>
                             </div>
 
+                            {authError ? (
+                                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+                                    <p className="font-semibold">
+                                        Sign-in failed
+                                    </p>
+                                    <p className="mt-1 text-red-600 dark:text-red-400">
+                                        {authError}
+                                    </p>
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        {lastMethod ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleLogin(lastMethod)}
+                                                className="rounded-md border border-red-200 bg-white px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-800/60 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-900/40"
+                                            >
+                                                Try again
+                                            </button>
+                                        ) : null}
+                                        <button
+                                            type="button"
+                                            onClick={handleReset}
+                                            className="rounded-md border border-red-200 bg-white px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-800/60 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-900/40"
+                                        >
+                                            Choose another method
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : null}
+
+                            {isLoading && activeMethod && !authError ? (
+                                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-400">
+                                    Finishing sign-in. This should only take a moment.
+                                </div>
+                            ) : null}
+
+                            {/* ─── Login Buttons ──────── */}
                             {/* ─── Login Options ──────── */}
                             <div className="flex flex-col gap-3">
                                 <button
                                     type="button"
+                                    onClick={() => handleLogin("google")}
+                                    disabled={!!activeMethod || isLoading}
+                                    className="flex w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 text-base font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-400 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus:ring-offset-slate-950"
                                     onClick={login}
                                     disabled={!ready}
                                     className="w-full rounded-lg bg-linear-to-r from-indigo-600 to-cyan-500 px-4 py-3 text-base font-semibold text-white shadow-lg shadow-cyan-500/20 transition-all hover:from-indigo-500 hover:to-cyan-400 hover:shadow-xl hover:shadow-cyan-500/30 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-slate-950"
@@ -80,6 +160,9 @@ export default function LoginPage() {
 
                                 <button
                                     type="button"
+                                    onClick={() => handleLogin("apple")}
+                                    disabled={!!activeMethod || isLoading}
+                                    className="flex w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 text-base font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:border-slate-400 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus:ring-offset-slate-950"
                                     onClick={() =>
                                         initOAuth({ provider: "google" })
                                     }
@@ -98,8 +181,35 @@ export default function LoginPage() {
                                     <div className="grow border-t border-slate-200 dark:border-slate-800" />
                                 </div>
 
+                                {/* Email */}
+                                <button
+                                    id="login-email"
+                                    type="button"
+                                    onClick={() => handleLogin("email")}
+                                    disabled={!!activeMethod || isLoading}
+                                    className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-cyan-500 px-4 py-3 text-base font-semibold text-white shadow-lg shadow-cyan-500/20 transition-all hover:from-indigo-500 hover:to-cyan-400 hover:shadow-xl hover:shadow-cyan-500/30 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-slate-950"
+                                >
+                                    {activeMethod === "email" ? (
+                                        <span className="flex items-center justify-center gap-2">
+                                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                                            Connecting...
+                                        </span>
+                                    ) : (
+                                        "Continue with Email"
+                                    )}
+                                </button>
                                 <LoginWithEmail />
                             </div>
+
+                            {activeMethod && !isLoading && !authError ? (
+                                <button
+                                    type="button"
+                                    onClick={handleReset}
+                                    className="text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                                >
+                                    Use a different method
+                                </button>
+                            ) : null}
 
                             {/* ─── Footer ──────────────── */}
                             <p className="text-center text-xs text-slate-400 dark:text-slate-500 leading-relaxed mt-4">
