@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useDeferredValue } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
 import { MatrixRain } from "@/components/UI/MatrixRain";
 import {
     Dna,
@@ -64,13 +65,203 @@ const PILLARS = [
 ];
 
 const ALL_COUNTRIES = [
-    "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan",
-    "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi",
-    "Cabo Verde", "Cambodia", "Cameroon", "Canada", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czechia",
-    "Democratic Republic of the Congo", "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia", "Fiji", "Finland", "France",
-    "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy",
-    "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway", "Oman", "Pakistan", "Palau", "Palestine State", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
+    "Afghanistan",
+    "Albania",
+    "Algeria",
+    "Andorra",
+    "Angola",
+    "Antigua and Barbuda",
+    "Argentina",
+    "Armenia",
+    "Australia",
+    "Austria",
+    "Azerbaijan",
+    "Bahamas",
+    "Bahrain",
+    "Bangladesh",
+    "Barbados",
+    "Belarus",
+    "Belgium",
+    "Belize",
+    "Benin",
+    "Bhutan",
+    "Bolivia",
+    "Bosnia and Herzegovina",
+    "Botswana",
+    "Brazil",
+    "Brunei",
+    "Bulgaria",
+    "Burkina Faso",
+    "Burundi",
+    "Cabo Verde",
+    "Cambodia",
+    "Cameroon",
+    "Canada",
+    "Central African Republic",
+    "Chad",
+    "Chile",
+    "China",
+    "Colombia",
+    "Comoros",
+    "Congo",
+    "Costa Rica",
+    "Croatia",
+    "Cuba",
+    "Cyprus",
+    "Czechia",
+    "Democratic Republic of the Congo",
+    "Denmark",
+    "Djibouti",
+    "Dominica",
+    "Dominican Republic",
+    "Ecuador",
+    "Egypt",
+    "El Salvador",
+    "Equatorial Guinea",
+    "Eritrea",
+    "Estonia",
+    "Eswatini",
+    "Ethiopia",
+    "Fiji",
+    "Finland",
+    "France",
+    "Gabon",
+    "Gambia",
+    "Georgia",
+    "Germany",
+    "Ghana",
+    "Greece",
+    "Grenada",
+    "Guatemala",
+    "Guinea",
+    "Guinea-Bissau",
+    "Guyana",
+    "Haiti",
+    "Honduras",
+    "Hungary",
+    "Iceland",
+    "India",
+    "Indonesia",
+    "Iran",
+    "Iraq",
+    "Ireland",
+    "Israel",
+    "Italy",
+    "Jamaica",
+    "Japan",
+    "Jordan",
+    "Kazakhstan",
+    "Kenya",
+    "Kiribati",
+    "Kuwait",
+    "Kyrgyzstan",
+    "Laos",
+    "Latvia",
+    "Lebanon",
+    "Lesotho",
+    "Liberia",
+    "Libya",
+    "Liechtenstein",
+    "Lithuania",
+    "Luxembourg",
+    "Madagascar",
+    "Malawi",
+    "Malaysia",
+    "Maldives",
+    "Mali",
+    "Malta",
+    "Marshall Islands",
+    "Mauritania",
+    "Mauritius",
+    "Mexico",
+    "Micronesia",
+    "Moldova",
+    "Monaco",
+    "Mongolia",
+    "Montenegro",
+    "Morocco",
+    "Mozambique",
+    "Myanmar",
+    "Namibia",
+    "Nauru",
+    "Nepal",
+    "Netherlands",
+    "New Zealand",
+    "Nicaragua",
+    "Niger",
+    "Nigeria",
+    "North Korea",
+    "North Macedonia",
+    "Norway",
+    "Oman",
+    "Pakistan",
+    "Palau",
+    "Palestine State",
+    "Panama",
+    "Papua New Guinea",
+    "Paraguay",
+    "Peru",
+    "Philippines",
+    "Poland",
+    "Portugal",
+    "Qatar",
+    "Romania",
+    "Russia",
+    "Rwanda",
+    "Saint Kitts and Nevis",
+    "Saint Lucia",
+    "Saint Vincent and the Grenadines",
+    "Samoa",
+    "San Marino",
+    "Sao Tome and Principe",
+    "Saudi Arabia",
+    "Senegal",
+    "Serbia",
+    "Seychelles",
+    "Sierra Leone",
+    "Singapore",
+    "Slovakia",
+    "Slovenia",
+    "Solomon Islands",
+    "Somalia",
+    "South Africa",
+    "South Korea",
+    "South Sudan",
+    "Spain",
+    "Sri Lanka",
+    "Sudan",
+    "Suriname",
+    "Sweden",
+    "Switzerland",
+    "Syria",
+    "Tajikistan",
+    "Tanzania",
+    "Thailand",
+    "Timor-Leste",
+    "Togo",
+    "Tonga",
+    "Trinidad and Tobago",
+    "Tunisia",
+    "Turkey",
+    "Turkmenistan",
+    "Tuvalu",
+    "Uganda",
+    "Ukraine",
+    "United Arab Emirates",
+    "United Kingdom",
+    "United States",
+    "Uruguay",
+    "Uzbekistan",
+    "Vanuatu",
+    "Vatican City",
+    "Venezuela",
+    "Vietnam",
+    "Yemen",
+    "Zambia",
+    "Zimbabwe",
 ];
+
+const HANDLE_REGEX = /^[a-z][a-z0-9_]{2,19}$/;
 
 // ─────────────────────────────────────────────────────
 // Onboarding Page — 3 steps
@@ -81,48 +272,48 @@ export default function OnboardingPage() {
 
     const [step, setStep] = useState(0);
     const [handle, setHandle] = useState("");
-    const [handleStatus, setHandleStatus] = useState<
-        "idle" | "checking" | "available" | "taken" | "invalid"
-    >("idle");
     const [country, setCountry] = useState("");
     const [pillars, setPillars] = useState<string[]>([]);
     const [saving, setSaving] = useState(false);
+    const deferredHandle = useDeferredValue(handle);
 
     const togglePillar = (id: string) => {
         setPillars((prev) =>
-            prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
+            prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
         );
     };
 
-    // Handle validation regex (must match backend)
-    const HANDLE_REGEX = /^[a-z][a-z0-9_]{2,19}$/;
+    const shouldCheckHandle =
+        deferredHandle.length >= 3 && HANDLE_REGEX.test(deferredHandle);
 
-    // Debounced handle availability check
-    useEffect(() => {
-        if (!handle || handle.length < 3) {
-            setHandleStatus(handle.length > 0 ? "invalid" : "idle");
-            return;
-        }
-        if (!HANDLE_REGEX.test(handle)) {
-            setHandleStatus("invalid");
-            return;
-        }
+    const { data: handleCheck, isFetching: isCheckingHandle } = useQuery({
+        queryKey: ["handle-availability", deferredHandle],
+        enabled: shouldCheckHandle,
+        queryFn: async () => {
+            const res = await fetch(
+                `/api/onboarding/check-handle?handle=${encodeURIComponent(deferredHandle)}`,
+            );
+            return res.json() as Promise<{ available: boolean }>;
+        },
+        staleTime: 10_000,
+    });
 
-        setHandleStatus("checking");
-        const timer = setTimeout(async () => {
-            try {
-                const res = await fetch(
-                    `/api/onboarding/check-handle?handle=${encodeURIComponent(handle)}`
-                );
-                const data = await res.json();
-                setHandleStatus(data.available ? "available" : "taken");
-            } catch {
-                setHandleStatus("idle");
-            }
-        }, 400);
-
-        return () => clearTimeout(timer);
-    }, [handle]);
+    const handleStatus:
+        | "idle"
+        | "checking"
+        | "available"
+        | "taken"
+        | "invalid" = !handle
+        ? "idle"
+        : handle.length < 3 || !HANDLE_REGEX.test(handle)
+          ? "invalid"
+          : handle !== deferredHandle || isCheckingHandle
+            ? "checking"
+            : handleCheck?.available === true
+              ? "available"
+              : handleCheck?.available === false
+                ? "taken"
+                : "idle";
 
     // Guard: redirect if not authenticated
     useEffect(() => {
@@ -156,7 +347,7 @@ export default function OnboardingPage() {
             if (!res.ok) {
                 const data = await res.json().catch(() => null);
                 toastError(
-                    data?.error ?? "Failed to save profile. Please try again."
+                    data?.error ?? "Failed to save profile. Please try again.",
                 );
                 return;
             }
@@ -254,7 +445,10 @@ export default function OnboardingPage() {
                                                 setHandle(
                                                     e.target.value
                                                         .toLowerCase()
-                                                        .replace(/[^a-z0-9_]/g, "")
+                                                        .replace(
+                                                            /[^a-z0-9_]/g,
+                                                            "",
+                                                        ),
                                                 )
                                             }
                                             maxLength={20}
@@ -262,8 +456,10 @@ export default function OnboardingPage() {
                                             className={`w-full rounded-lg border bg-white pl-10 pr-10 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 dark:bg-slate-900/50 dark:text-slate-100 dark:placeholder:text-slate-600 ${
                                                 handleStatus === "available"
                                                     ? "border-emerald-400 focus:border-emerald-500 focus:ring-emerald-500/20"
-                                                    : handleStatus === "taken" ||
-                                                        handleStatus === "invalid"
+                                                    : handleStatus ===
+                                                            "taken" ||
+                                                        handleStatus ===
+                                                            "invalid"
                                                       ? "border-red-400 focus:border-red-500 focus:ring-red-500/20"
                                                       : "border-slate-300 focus:border-cyan-500 focus:ring-cyan-500/20 dark:border-slate-800"
                                             }`}
@@ -340,7 +536,9 @@ export default function OnboardingPage() {
                                         type="text"
                                         list="countries-list"
                                         value={country}
-                                        onChange={(e) => setCountry(e.target.value)}
+                                        onChange={(e) =>
+                                            setCountry(e.target.value)
+                                        }
                                         placeholder="Start typing your country..."
                                         className="block w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition-colors placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-cyan-500 dark:focus:ring-cyan-500"
                                         autoComplete="off"
@@ -351,7 +549,8 @@ export default function OnboardingPage() {
                                         ))}
                                     </datalist>
                                     <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                                        You can select from the list or type your own.
+                                        You can select from the list or type
+                                        your own.
                                     </p>
                                 </div>
 
@@ -389,14 +588,18 @@ export default function OnboardingPage() {
 
                                 <div className="mt-8 space-y-3">
                                     {PILLARS.map((p) => {
-                                        const isSelected = pillars.includes(p.id);
+                                        const isSelected = pillars.includes(
+                                            p.id,
+                                        );
                                         const Icon = p.icon;
 
                                         return (
                                             <button
                                                 key={p.id}
                                                 type="button"
-                                                onClick={() => togglePillar(p.id)}
+                                                onClick={() =>
+                                                    togglePillar(p.id)
+                                                }
                                                 className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-all ${
                                                     isSelected
                                                         ? "border-cyan-500 bg-cyan-50 ring-1 ring-cyan-500 dark:bg-cyan-500/10"

@@ -31,18 +31,24 @@ const createPostSchema = z.object({
     capturedAt: z.string().datetime(),
 });
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+    try {
+        const parts = token.split(".");
+        if (parts.length !== 3) return null;
+        const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+        return JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
+    } catch {
+        return null;
+    }
+}
+
 // ── Helper: extract user ID from sb-access-token ─────
 function getUserIdFromCookie(req: NextRequest): string | null {
     const token = req.cookies.get("sb-access-token")?.value;
     if (!token) return null;
-    try {
-        const payload = JSON.parse(
-            Buffer.from(token.split(".")[1], "base64").toString(),
-        );
-        return payload.sub ?? null;
-    } catch {
-        return null;
-    }
+    const payload = decodeJwtPayload(token);
+    return typeof payload?.sub === "string" ? payload.sub : null;
 }
 
 // ── POST: Create a new post ──────────────────────────
@@ -151,7 +157,10 @@ export async function GET(req: NextRequest) {
             .range(offset, offset + limit - 1);
 
         // Optional pillar filter
-        if (pillar && VALID_PILLARS.includes(pillar as (typeof VALID_PILLARS)[number])) {
+        if (
+            pillar &&
+            VALID_PILLARS.includes(pillar as (typeof VALID_PILLARS)[number])
+        ) {
             query = query.eq("pillar", pillar);
         }
 
