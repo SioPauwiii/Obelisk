@@ -3,8 +3,6 @@
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { buildAuthedFetch } from "@/lib/api/authFetch";
 import { usePrivyAuth } from "@/hooks/usePrivyAuth";
 
@@ -16,7 +14,8 @@ interface MeResponse {
 export default function DashboardPage() {
     const router = useRouter();
     const queryClient = useQueryClient();
-    const { ready, authenticated, walletAddress, logout, getToken } = usePrivyAuth();
+    const { ready, authenticated, walletAddress, logout, getToken } =
+        usePrivyAuth();
 
     const apiFetch = useMemo(() => buildAuthedFetch(getToken), [getToken]);
 
@@ -27,7 +26,14 @@ export default function DashboardPage() {
     });
 
     if (!ready) {
-        return <div className="min-h-svh bg-slate-950" />;
+        return (
+            <div className="grid min-h-svh place-items-center bg-slate-950 font-sans">
+                <div className="flex flex-col items-center gap-4 z-20">
+                    <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-900 border-t-indigo-500" />
+                    <p className="text-sm text-slate-500">Loading...</p>
+                </div>
+            </div>
+        );
     }
 
     if (!authenticated) {
@@ -42,30 +48,67 @@ export default function DashboardPage() {
     };
 
     return (
-        <div className="min-h-svh bg-slate-950 text-slate-50 flex items-center justify-center p-6">
-            <Card className="w-full max-w-lg bg-slate-900/80 border-slate-800">
-                <CardHeader>
-                    <CardTitle className="text-2xl">Dashboard</CardTitle>
-                    <CardDescription className="text-slate-400">
+        <div className="relative flex min-h-svh items-center justify-center bg-[#0d1128] p-6 font-sans overflow-hidden">
+            {/* Ambient background glows */}
+            <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/10 blur-[100px] rounded-full pointer-events-none" />
+            <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-600/20 blur-[100px] rounded-full pointer-events-none" />
+
+            {/* Main Content Card */}
+            <div className="relative z-10 w-full max-w-lg rounded-2xl border border-slate-800/60 bg-slate-900/40 p-8 backdrop-blur-xl shadow-2xl">
+                <div className="mb-8 border-b border-slate-800 pb-6">
+                    <h1 className="text-2xl font-bold tracking-tight text-white">
+                        Dashboard
+                    </h1>
+                    <p className="mt-2 text-sm text-slate-400">
                         Protected route using Privy access token verification.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {isLoading ? <p className="text-sm text-slate-400">Loading profile...</p> : null}
-                    {isError ? <p className="text-sm text-red-400">Unable to load profile.</p> : null}
-                    <div className="rounded-md border border-slate-800 bg-slate-950 p-4 space-y-2">
-                        <p className="text-sm text-slate-400">Frontend wallet</p>
-                        <p className="font-mono text-sm break-all">{walletAddress ?? "No wallet linked"}</p>
+                    </p>
+                </div>
+
+                <div className="space-y-4">
+                    {/* Status Messages */}
+                    {isLoading && (
+                        <div className="flex items-center gap-3 text-sm text-cyan-400">
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-900 border-t-cyan-400" />
+                            Loading profile...
+                        </div>
+                    )}
+
+                    {isError && (
+                        <p className="text-sm text-red-400 bg-red-950/30 p-3 rounded-lg border border-red-900/50">
+                            Unable to load profile information.
+                        </p>
+                    )}
+
+                    {/* Data Display Cards */}
+                    <div className="rounded-xl border border-slate-800/80 bg-slate-950/50 p-5 shadow-inner">
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                            Frontend Wallet
+                        </h3>
+                        <p className="font-mono text-sm text-slate-200 break-all">
+                            {walletAddress ?? "No wallet linked"}
+                        </p>
                     </div>
-                    <div className="rounded-md border border-slate-800 bg-slate-950 p-4 space-y-2">
-                        <p className="text-sm text-slate-400">Verified wallet (backend)</p>
-                        <p className="font-mono text-sm break-all">{data?.walletAddress ?? "Not available"}</p>
+
+                    <div className="rounded-xl border border-slate-800/80 bg-slate-950/50 p-5 shadow-inner">
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                            Verified Wallet (Backend)
+                        </h3>
+                        <p className="font-mono text-sm text-slate-200 break-all">
+                            {data?.walletAddress ?? "Not available"}
+                        </p>
                     </div>
-                    <Button type="button" variant="outline" className="w-full" onClick={onLogout}>
-                        Logout
-                    </Button>
-                </CardContent>
-            </Card>
+                </div>
+
+                <div className="mt-8">
+                    <button
+                        type="button"
+                        onClick={onLogout}
+                        className="w-full rounded-lg border border-slate-700 bg-transparent px-4 py-3 text-sm font-medium text-slate-300 transition-all hover:bg-slate-800 hover:text-white hover:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-600 focus:ring-offset-2 focus:ring-offset-[#0d1128]"
+                    >
+                        Secure Logout
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }

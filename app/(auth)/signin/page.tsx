@@ -3,12 +3,14 @@
 import { useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useLoginWithOAuth } from "@privy-io/react-auth";
 import { usePrivyAuth } from "@/hooks/usePrivyAuth";
+import { LoginWithEmail } from "@/components/auth/LoginWithEmail";
 
 export default function LoginPage() {
     const router = useRouter();
     const { ready, authenticated, login } = usePrivyAuth();
-
+    const { initOAuth } = useLoginWithOAuth();
     // Redirect once authenticated
     useEffect(() => {
         if (ready && authenticated) {
@@ -62,16 +64,37 @@ export default function LoginPage() {
                                 </p>
                             </div>
 
-                            {/* ─── Login Button ──────── */}
+                            {/* ─── Login Options ──────── */}
                             <div className="flex flex-col gap-3">
                                 <button
                                     type="button"
                                     onClick={login}
                                     disabled={!ready}
-                                    className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-cyan-500 px-4 py-3 text-base font-semibold text-white shadow-lg shadow-cyan-500/20 transition-all hover:from-indigo-500 hover:to-cyan-400 hover:shadow-xl hover:shadow-cyan-500/30 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-slate-950"
+                                    className="w-full rounded-lg bg-linear-to-r from-indigo-600 to-cyan-500 px-4 py-3 text-base font-semibold text-white shadow-lg shadow-cyan-500/20 transition-all hover:from-indigo-500 hover:to-cyan-400 hover:shadow-xl hover:shadow-cyan-500/30 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-slate-950"
                                 >
-                                    Connect Wallet
+                                    Continue with Wallet
                                 </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        initOAuth({ provider: "google" })
+                                    }
+                                    disabled={!ready}
+                                    className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base font-semibold text-slate-800 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus:ring-offset-slate-950"
+                                >
+                                    Continue with Google
+                                </button>
+
+                                <div className="relative flex items-center py-2">
+                                    <div className="grow border-t border-slate-200 dark:border-slate-800" />
+                                    <span className="shrink-0 px-2 text-xs text-slate-500 bg-slate-50 dark:bg-slate-950">
+                                        Or continue with email
+                                    </span>
+                                    <div className="grow border-t border-slate-200 dark:border-slate-800" />
+                                </div>
+
+                                <LoginWithEmail />
                             </div>
 
                             {/* ─── Footer ──────────────── */}
