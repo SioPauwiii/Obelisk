@@ -1,6 +1,5 @@
-export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 
-export default function Home() {
-    redirect("/signin");
+export default function HomePage() {
+    redirect("/dashboard");
 }
