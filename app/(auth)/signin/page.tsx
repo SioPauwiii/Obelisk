@@ -9,6 +9,12 @@ import { LoginWithEmail } from "@/components/auth/LoginWithEmail";
 import { Wallet } from "lucide-react";
 import { MatrixRain } from "@/components/UI/MatrixRain";
 import GoogleIcon from "@/public/googleicon";
+import {
+    toastSuccess,
+    toastError,
+    toastInfo,
+    toastWarning,
+} from "@/utils/Toast";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -20,13 +26,21 @@ export default function LoginPage() {
     // Redirect once authenticated: onboarding for new users, dashboard for returning
     useEffect(() => {
         if (isAuthenticated && !isLoading && user) {
-            if (!user.full_name) {
+            if (!user.handle) {
                 router.replace("/onboarding");
             } else {
                 router.replace("/dashboard");
             }
         }
     }, [isAuthenticated, isLoading, user, router]);
+
+    // Show toast on auth error
+    useEffect(() => {
+        if (authError) {
+            toastError(authError);
+            handleReset(); // Reset active method when error occurs
+        }
+    }, [authError]);
 
     const handleWalletLogin = () => {
         clearError();
@@ -92,27 +106,6 @@ export default function LoginPage() {
                                     archive.
                                 </p>
                             </div>
-
-                            {/* ─── Error Display ──────── */}
-                            {authError ? (
-                                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
-                                    <p className="font-semibold">
-                                        Sign-in failed
-                                    </p>
-                                    <p className="mt-1 text-red-600 dark:text-red-400">
-                                        {authError}
-                                    </p>
-                                    <div className="mt-3 flex flex-wrap gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={handleReset}
-                                            className="rounded-md border border-red-200 bg-white px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-800/60 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-900/40"
-                                        >
-                                            Try again
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : null}
 
                             {/* ─── Loading indicator ──── */}
                             {isLoading && activeMethod && !authError ? (

@@ -10,6 +10,7 @@ import { usePrivy, useWallets, useCreateWallet } from "@privy-io/react-auth";
 export interface AppUser {
     id: string;
     privy_did: string;
+    handle: string | null;
     email: string | null;
     full_name: string | null;
     avatar_url: string | null;

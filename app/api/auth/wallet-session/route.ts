@@ -14,7 +14,7 @@ const privy = new PrivyClient({
 
 // Explicit column list — never use select("*")
 const USER_COLS =
-    "id, privy_did, email, full_name, avatar_url, wallet_address, auth_provider, is_verified_human, humanity_score, country, pillar_preference, voucher_count, created_at, updated_at";
+    "id, privy_did, handle, email, full_name, avatar_url, wallet_address, auth_provider, is_verified_human, humanity_score, country, pillar_preference, voucher_count, created_at, updated_at";
 
 // ─────────────────────────────────────────────────────
 // Helpers
@@ -199,7 +199,7 @@ export async function POST(req: NextRequest) {
             sub: dbUser.id,
             role: "authenticated",
             wallet_address: walletAddress,
-            onboarded: !!dbUser.full_name,
+            onboarded: !!dbUser.handle,
             aud: "authenticated",
             iss: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1`,
         })
