@@ -70,3 +70,42 @@ CREATE TABLE public.posts (
 CREATE INDEX IF NOT EXISTS idx_posts_user_id ON public.posts (user_id);
 CREATE INDEX IF NOT EXISTS idx_posts_pillar ON public.posts (pillar);
 CREATE INDEX IF NOT EXISTS idx_posts_created_at ON public.posts (created_at DESC);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- SBT System Migration
+-- Run after initial schema.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Vouches table
+CREATE TABLE IF NOT EXISTS public.vouches (
+  id          uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
+  post_id     uuid        NOT NULL REFERENCES public.posts(id)  ON DELETE CASCADE,
+  voucher_id  uuid        NOT NULL REFERENCES public.users(id)  ON DELETE CASCADE,
+  created_at  timestamptz DEFAULT now(),
+  UNIQUE (post_id, voucher_id)
+);
+CREATE INDEX IF NOT EXISTS idx_vouches_post_id    ON public.vouches (post_id);
+CREATE INDEX IF NOT EXISTS idx_vouches_voucher_id ON public.vouches (voucher_id);
+
+-- SBT mint tracking columns on posts
+ALTER TABLE public.posts
+  ADD COLUMN IF NOT EXISTS sbt_token_id       text,
+  ADD COLUMN IF NOT EXISTS sbt_minted_at      timestamptz,
+  ADD COLUMN IF NOT EXISTS sbt_mint_status    text DEFAULT 'none',
+  ADD COLUMN IF NOT EXISTS sbt_mint_attempts  int  DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS sbt_mint_error     text;
+
+CREATE INDEX IF NOT EXISTS idx_posts_sbt_mint_status
+  ON public.posts (sbt_mint_status)
+  WHERE sbt_mint_status IN ('pending', 'failed');
+
+-- RPC: atomically increment voucher_count on the user who gave a vouch
+CREATE OR REPLACE FUNCTION increment_voucher_count(user_id uuid)
+RETURNS void
+LANGUAGE sql
+AS $$
+  UPDATE public.users
+  SET voucher_count = voucher_count + 1,
+      updated_at    = now()
+  WHERE id = user_id;
+$$;
