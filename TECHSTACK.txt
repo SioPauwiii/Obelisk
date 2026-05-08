@@ -1,0 +1,11 @@
+Humanity Archive is a social platform where only real humans can post — every photo shared is cryptographically proven to be live, real, and permanent.
+The core idea: A user opens the app, takes a live photo of something they're experiencing, and the platform verifies it's real (not AI-generated or faked), then stores it permanently on the blockchain — forever tied to that person.
+Five main layers:
+
+The App (Frontend) — A PWA built with Next.js, meaning it works like a native mobile app without needing an app store. Users can install it on their phone and use the camera directly in the browser.
+The Backend — Supabase handles the everyday social stuff: feeds, likes, comments, profiles. Fast and off-chain since not everything needs to be on the blockchain.
+The Blockchain Layer — Uses Base or Polygon (cheap, fast Ethereum networks). When a photo is verified, a non-transferable NFT ("Soulbound Token") is minted as a permanent record. Users never deal with crypto directly — wallets are created invisibly and gas fees are sponsored.
+Permanent Storage — Verified photos go to Arweave, a permanent decentralized hard drive. Unlike regular cloud storage, data stored there can't be deleted or taken down.
+Anti-AI Verification — Before anything is posted, the image is checked by an ML service (Hive or AWS Rekognition) to detect if it's AI-generated or a photo of a screen. C2PA metadata (timestamp, GPS, device info) is also embedded at capture.
+
+The end result: A social feed where every post is a cryptographically verified, permanently archived, real human moment — with the entire Web3 complexity hidden from the user.

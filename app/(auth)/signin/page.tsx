@@ -63,7 +63,7 @@ export default function LoginPage() {
                     <div className="flex items-center gap-2 font-medium">
                         <Image
                             src="/obelisk_logo.png"
-                            alt="Logo"
+                            alt="Obelisk Logo"
                             className="h-10 w-10 object-contain"
                             width={40}
                             height={40}
