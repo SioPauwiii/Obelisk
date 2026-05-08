@@ -1,9 +1,4 @@
-import dynamic from "next/dynamic";
-
-const TransactionTest = dynamic(
-  () => import("@/components/blockchain/TransactionTest").then(mod => mod.TransactionTest),
-  { ssr: false }
-);
+import { TransactionTest } from "@/components/blockchain/TransactionTest";
 
 export default function TransactionDebugPage() {
   return (
