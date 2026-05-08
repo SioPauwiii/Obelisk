@@ -13,7 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 // ─────────────────────────────────────────────────────
 
 // Routes that require authentication + completed onboarding
-const PROTECTED_ROUTES = ["/dashboard", "/capture"];
+const PROTECTED_ROUTES = ["/feed", "/capture"];
 
 // Routes that require authentication but NOT onboarding
 const ONBOARDING_ROUTES = ["/onboarding"];
@@ -57,7 +57,7 @@ export function proxy(req: NextRequest) {
     // ── 1. Auth routes (signin): redirect away if logged in ──
     if (AUTH_ROUTES.some((r) => pathname.startsWith(r))) {
         if (isAuthenticated) {
-            const dest = isOnboarded ? "/dashboard" : "/onboarding";
+            const dest = isOnboarded ? "/feed" : "/onboarding";
             return NextResponse.redirect(new URL(dest, req.url));
         }
         return NextResponse.next();
@@ -69,7 +69,7 @@ export function proxy(req: NextRequest) {
             return NextResponse.redirect(new URL("/signin", req.url));
         }
         if (isOnboarded) {
-            return NextResponse.redirect(new URL("/dashboard", req.url));
+            return NextResponse.redirect(new URL("/feed", req.url));
         }
         return NextResponse.next();
     }
@@ -93,7 +93,7 @@ export function proxy(req: NextRequest) {
         if (!isOnboarded) {
             return NextResponse.redirect(new URL("/onboarding", req.url));
         }
-        return NextResponse.redirect(new URL("/dashboard", req.url));
+        return NextResponse.redirect(new URL("/feed", req.url));
     }
 
     return NextResponse.next();
@@ -114,8 +114,8 @@ export const config = {
         "/signin/:path*",
         "/onboarding",
         "/onboarding/:path*",
-        "/dashboard",
-        "/dashboard/:path*",
+        "/feed",
+        "/feed/:path*",
         "/capture",
         "/capture/:path*",
         "/terms-of-service",
