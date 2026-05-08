@@ -76,7 +76,7 @@ export default function DashboardFeed() {
 
                 <div className="border-t border-slate-200 dark:border-slate-800 p-4">
                     <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-                        <div className="h-8 w-8 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500" />
+                        <div className="h-8 w-8 rounded-full bg-linear-to-r from-indigo-500 to-cyan-500" />
                         <div className="flex flex-col">
                             <span className="text-sm font-bold">@swif7ify</span>
                             <span className="text-xs text-slate-500">
@@ -102,7 +102,7 @@ export default function DashboardFeed() {
                             Obelisk
                         </span>
                     </div>
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500" />
+                    <div className="h-8 w-8 rounded-full bg-linear-to-r from-indigo-500 to-cyan-500" />
                 </header>
 
                 {/* Feed Toggle */}
@@ -150,7 +150,7 @@ export default function DashboardFeed() {
                             <p className="mb-3 text-sm">{post.caption}</p>
 
                             {/* The Image (Anti-AI Verified) */}
-                            <div className="relative mb-4 aspect-[4/3] w-full overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-950">
+                            <div className="relative mb-4 aspect-4/3 w-full overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-950">
                                 <Image
                                     src={post.imageUrl}
                                     alt="Event"
@@ -207,7 +207,7 @@ export default function DashboardFeed() {
                     <span className="text-[10px] font-medium">Map</span>
                 </button>
                 {/* Central "Capture" Button */}
-                <button className="relative -top-6 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-cyan-500 shadow-lg shadow-cyan-500/30 text-white transition-transform active:scale-95">
+                <button className="relative -top-6 flex h-14 w-14 items-center justify-center rounded-full bg-linear-to-r from-indigo-600 to-cyan-500 shadow-lg shadow-cyan-500/30 text-white transition-transform active:scale-95">
                     <CameraIcon className="h-7 w-7" />
                 </button>
                 <button className="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
