@@ -19,6 +19,7 @@ import {
     X,
     AtSign,
 } from "lucide-react";
+import { toastSuccess, toastError } from "@/utils/Toast";
 
 // ─────────────────────────────────────────────────────
 // Pillar options matching the Humanity Archive concept
@@ -93,7 +94,6 @@ export default function OnboardingPage() {
     const [country, setCountry] = useState("");
     const [pillars, setPillars] = useState<string[]>([]);
     const [saving, setSaving] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
     const togglePillar = (id: string) => {
         setPillars((prev) =>
@@ -147,7 +147,6 @@ export default function OnboardingPage() {
 
     const handleComplete = async () => {
         setSaving(true);
-        setError(null);
 
         try {
             const res = await fetch("/api/onboarding", {
@@ -163,15 +162,16 @@ export default function OnboardingPage() {
 
             if (!res.ok) {
                 const data = await res.json().catch(() => null);
-                setError(
-                    data?.error ?? "Failed to save profile. Please try again.",
+                toastError(
+                    data?.error ?? "Failed to save profile. Please try again."
                 );
                 return;
             }
 
+            toastSuccess("Profile created successfully!");
             router.replace("/dashboard");
         } catch {
-            setError("Network error. Please try again.");
+            toastError("Network error. Please try again.");
         } finally {
             setSaving(false);
         }
@@ -428,12 +428,6 @@ export default function OnboardingPage() {
                                         );
                                     })}
                                 </div>
-
-                                {error && (
-                                    <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-400">
-                                        {error}
-                                    </div>
-                                )}
 
                                 <div className="mt-8 flex gap-3">
                                     <button
