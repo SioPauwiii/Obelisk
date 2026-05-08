@@ -7,6 +7,7 @@ import { useLoginWithOAuth } from "@privy-io/react-auth";
 import { usePrivyAuth } from "@/hooks/usePrivyAuth";
 import { LoginWithEmail } from "@/components/auth/LoginWithEmail";
 import { Wallet } from "lucide-react";
+import { MatrixRain } from "@/components/UI/MatrixRain";
 import GoogleIcon from "@/public/googleicon";
 
 export default function LoginPage() {
@@ -112,23 +113,40 @@ export default function LoginPage() {
             </div>
 
             {/* ─── VISUAL SECTION ───────────────────── */}
-            <div className="relative hidden lg:flex items-center justify-center bg-[#0d1128] overflow-hidden">
-                {/* Ambient background glows matching the logo */}
+            <div className="relative hidden lg:flex items-center justify-center bg-[#0d1128] overflow-hidden min-h-screen">
+                {/* 1. Ambient background glows */}
                 <div className="absolute top-1/4 left-1/4 w-100 h-100 bg-cyan-500/20 blur-[120px] rounded-full pointer-events-none" />
                 <div className="absolute bottom-1/4 right-1/4 w-112.5 h-112.5 bg-indigo-600/30 blur-[120px] rounded-full pointer-events-none" />
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-50 h-50 bg-yellow-300/10 blur-[80px] rounded-full pointer-events-none" />
 
+                {/* 2. THE ASCII ANIMATION LAYER */}
+                <div
+                    className="absolute inset-0 flex items-center justify-center z-0"
+                    style={{
+                        maskImage:
+                            "radial-gradient(circle, black 30%, transparent 80%)",
+                        WebkitMaskImage:
+                            "radial-gradient(circle, black 30%, transparent 80%)",
+                    }}
+                >
+                    <MatrixRain />
+                </div>
+
+                {/* 3. Gradient Overlay for depth */}
                 <div className="absolute inset-0 bg-linear-to-t from-[#0d1128] via-transparent to-transparent z-10 pointer-events-none" />
 
+                {/* 4. Text Content */}
                 <div className="absolute bottom-10 left-10 right-10 z-20">
                     <blockquote className="space-y-2 text-cyan-50">
-                        <p className="text-lg font-medium leading-relaxed">
+                        <p className="text-lg font-medium leading-relaxed max-w-md">
                             &ldquo;Securely access Obelisk — a
                             blockchain-powered humanity archive preserving
                             identity, authenticity, and digital legacy for
                             future generations.&rdquo;
                         </p>
-                        <footer className="text-sm font-semibold text-cyan-400/80 tracking-wide"></footer>
+                        <footer className="text-sm font-semibold text-cyan-400/80 tracking-wide uppercase">
+                            — OneDev PH
+                        </footer>
                     </blockquote>
                 </div>
             </div>
