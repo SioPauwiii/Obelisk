@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+    transpilePackages: [
+        "permissionless",
+        "viem",
+        "@privy-io/react-auth",
+        "@privy-io/wagmi",
+    ],
     images: {
         remotePatterns: [
             {
@@ -8,6 +14,18 @@ const nextConfig: NextConfig = {
                 hostname: "sensitive-mockingbird-6dww5.lighthouseweb3.xyz",
             },
         ],
+    },
+    turbopack: {},
+    webpack: (config, { isServer }) => {
+        if (!isServer) {
+            config.resolve.fallback = {
+                ...config.resolve.fallback,
+                fs: false,
+                net: false,
+                tls: false,
+            };
+        }
+        return config;
     },
 };
 
