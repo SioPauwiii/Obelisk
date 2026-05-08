@@ -55,6 +55,17 @@ function getUserIdFromCookie(req: NextRequest): string | null {
     return typeof payload?.sub === "string" ? payload.sub : null;
 }
 
+function normalizeSearchTerm(raw: string | null): string {
+    if (!raw) return "";
+    return raw.trim().replace(/[(),]/g, " ").replace(/\s+/g, " ").slice(0, 120);
+}
+
+function buildIlikePattern(term: string): string {
+    // postgrest uses * as wildcard for like/ilike filters
+    const sanitized = term.replace(/[*]/g, "");
+    return `*${sanitized}*`;
+}
+
 // ── POST: Create a new post ──────────────────────────
 export async function POST(req: NextRequest) {
     try {
@@ -146,6 +157,7 @@ export async function GET(req: NextRequest) {
             Math.max(1, parseInt(searchParams.get("limit") ?? "20")),
         );
         const pillar = searchParams.get("pillar");
+        const queryText = normalizeSearchTerm(searchParams.get("q"));
         const offset = (page - 1) * limit;
 
         const supabase = createAdminClient();
@@ -174,6 +186,44 @@ export async function GET(req: NextRequest) {
             VALID_PILLARS.includes(pillar as (typeof VALID_PILLARS)[number])
         ) {
             query = query.eq("pillar", pillar);
+        }
+
+        if (queryText) {
+            const pattern = buildIlikePattern(queryText);
+            const handleTerm = queryText.replace(/^@+/, "").trim();
+            const handlePattern = buildIlikePattern(handleTerm);
+
+            let matchingUserIds: string[] = [];
+            if (handleTerm) {
+                const { data: users, error: usersError } = await supabase
+                    .from("users")
+                    .select("id")
+                    .ilike("handle", handlePattern)
+                    .limit(100);
+
+                if (usersError) {
+                    console.error("User handle search failed:", usersError);
+                } else {
+                    matchingUserIds = (users ?? []).map((u) => u.id);
+                }
+            }
+
+            const orFilters = [
+                `title.ilike.${pattern}`,
+                `caption.ilike.${pattern}`,
+                `location_name.ilike.${pattern}`,
+                `image_cid.ilike.${pattern}`,
+                `proof_cid.ilike.${pattern}`,
+                `image_url.ilike.${pattern}`,
+                `proof_url.ilike.${pattern}`,
+                `tx_hash.ilike.${pattern}`,
+            ];
+
+            if (matchingUserIds.length > 0) {
+                orFilters.push(`user_id.in.(${matchingUserIds.join(",")})`);
+            }
+
+            query = query.or(orFilters.join(","));
         }
 
         const { data: posts, error: fetchError, count } = await query;
