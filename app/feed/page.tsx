@@ -104,6 +104,9 @@ function timeAgo(dateStr: string): string {
 function PostCard({ post }: { post: Post }) {
     const [showProof, setShowProof] = useState(false);
     const [imageError, setImageError] = useState(false);
+    const [vouchCount, setVouchCount] = useState(post.vouch_count);
+    const [hasVouched, setHasVouched] = useState(false);
+    const [isVouching, setIsVouching] = useState(false);
     const author = post.users;
     const pillarColor =
         PILLAR_COLORS[post.pillar] ??
@@ -117,6 +120,36 @@ function PostCard({ post }: { post: Post }) {
             console.log(`[Feed] Post ${post.id} image_url: ${post.image_url}`);
         }
     }, [post.id, post.image_url]);
+
+    const handleVouch = async () => {
+        if (isVouching || hasVouched) return;
+        setIsVouching(true);
+
+        // Optimistic update
+        setVouchCount((prev) => prev + 1);
+        setHasVouched(true);
+
+        try {
+            const res = await fetch(`/api/posts/${post.id}/vouch`, {
+                method: "POST",
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                // Revert on error
+                setVouchCount((prev) => prev - 1);
+                setHasVouched(false);
+                alert(data.error ?? "Failed to vouch");
+            }
+        } catch (err) {
+            // Revert on network error
+            setVouchCount((prev) => prev - 1);
+            setHasVouched(false);
+            alert("Network error — please try again");
+        } finally {
+            setIsVouching(false);
+        }
+    };
 
     return (
         <article className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
@@ -205,6 +238,18 @@ function PostCard({ post }: { post: Post }) {
                             : "Captured"}
                     </div>
                 )}
+                {/* SBT Badge */}
+                {post.tx_hash && (
+                    <a
+                        href={`https://testnet.snowtrace.io/tx/${post.tx_hash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-indigo-600/90 px-2.5 py-1 text-[10px] font-medium text-white backdrop-blur-sm hover:bg-indigo-500 transition-colors"
+                    >
+                        <ShieldCheck className="h-3 w-3" />
+                        Archived On-Chain
+                    </a>
+                )}
             </div>
 
             {/* Crypto Proof Toggle */}
@@ -252,9 +297,14 @@ function PostCard({ post }: { post: Post }) {
                         {post.tx_hash && (
                             <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                                 <Link2 className="h-3.5 w-3.5" /> Tx:{" "}
-                                <span className="font-mono">
+                                <a
+                                    href={`https://testnet.snowtrace.io/tx/${post.tx_hash}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-mono text-cyan-600 dark:text-cyan-400 hover:underline"
+                                >
                                     {post.tx_hash.slice(0, 10)}...
-                                </span>
+                                </a>
                             </div>
                         )}
                     </div>
@@ -263,9 +313,19 @@ function PostCard({ post }: { post: Post }) {
 
             {/* Actions */}
             <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 px-4 py-3">
-                <button className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors">
-                    <ArrowUpRight className="h-4 w-4" />
-                    <span>Vouch ({post.vouch_count})</span>
+                <button
+                    onClick={handleVouch}
+                    disabled={isVouching || hasVouched}
+                    className={cn(
+                        "flex items-center gap-2 text-sm font-medium transition-colors",
+                        hasVouched
+                            ? "text-indigo-600 dark:text-indigo-400 cursor-default"
+                            : "text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400",
+                        isVouching && "opacity-50 cursor-wait",
+                    )}
+                >
+                    <ArrowUpRight className={cn("h-4 w-4", hasVouched && "text-indigo-600 dark:text-indigo-400")} />
+                    <span>{hasVouched ? "Vouched" : "Vouch"} ({vouchCount})</span>
                 </button>
                 <button className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">
                     <Share2 className="h-4 w-4" /> Share
@@ -274,6 +334,7 @@ function PostCard({ post }: { post: Post }) {
         </article>
     );
 }
+
 
 // ─────────────────────────────────────────────────────
 // Loading Skeleton
