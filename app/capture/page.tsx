@@ -18,6 +18,8 @@ import {
     Globe,
     Rocket,
     HeartHandshake,
+    Database,
+    ArrowUpRight,
     type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -222,14 +224,14 @@ export default function CapturePage() {
     const canArchive = title.trim().length >= 3 && pillar !== "";
 
     return (
-        <main className="fixed inset-0 bg-black flex flex-col">
+        <main className="fixed inset-0 bg-slate-50 dark:bg-slate-950 flex flex-col font-sans">
             {/* Header */}
             <div className="absolute top-0 left-0 right-0 z-50 p-6 flex items-center justify-between pointer-events-none">
                 <Link
                     href="/feed"
-                    className="p-3 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 pointer-events-auto hover:bg-black/60 transition-colors"
+                    className="p-3 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 pointer-events-auto hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-sm text-slate-700 dark:text-slate-300"
                 >
-                    <ArrowLeft className="w-5 h-5 text-white" />
+                    <ArrowLeft className="w-5 h-5" />
                 </Link>
             </div>
 
@@ -238,106 +240,92 @@ export default function CapturePage() {
 
             {/* ── Step: Preview ─────────────────────────── */}
             {step === "preview" && capturedData && (
-                <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-8 animate-in fade-in zoom-in duration-500">
-                    <div className="relative group max-w-md w-full aspect-3/4 rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+                <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-6 animate-in fade-in zoom-in-95 duration-500 overflow-y-auto">
+                    <div className="relative group max-w-sm w-full aspect-[4/5] rounded-[2rem] overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-slate-100 dark:bg-slate-900">
+                        {/* Image */}
                         {imageUrl && (
-                            <div className="w-full h-full relative">
+                            <div className="absolute inset-0 w-full h-full">
                                 <Image
                                     src={imageUrl}
                                     alt="Captured"
                                     fill
-                                    className="object-cover"
+                                    className="object-cover transition-transform duration-700 group-hover:scale-105"
                                     unoptimized
                                 />
                             </div>
                         )}
+                        {/* Elegant Vignette */}
+                        <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-90" />
 
-                        {/* Metadata Overlay */}
-                        <div className="absolute bottom-0 left-0 right-0 p-6 bg-linear-to-t from-black/80 to-transparent">
-                            <div className="flex flex-col gap-2">
-                                <div className="flex items-center gap-2">
-                                    <MapPin className="w-3 h-3 text-cyan-400" />
-                                    <span className="text-[10px] font-mono text-white/70">
-                                        {typeof capturedData.proof.payload
-                                            .location?.latitude === "number"
-                                            ? capturedData.proof.payload.location.latitude.toFixed(
-                                                  4,
-                                              )
-                                            : "—"}
-                                        ,{" "}
-                                        {typeof capturedData.proof.payload
-                                            .location?.longitude === "number"
-                                            ? capturedData.proof.payload.location.longitude.toFixed(
-                                                  4,
-                                              )
-                                            : "—"}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Clock className="w-3 h-3 text-cyan-400" />
-                                    <span className="text-[10px] font-mono text-white/70">
-                                        {typeof capturedData.proof.payload
-                                            .timestamp === "number"
-                                            ? new Date(
-                                                  capturedData.proof.payload
-                                                      .timestamp,
-                                              ).toLocaleString()
-                                            : "Unknown"}
-                                    </span>
-                                </div>
+                        {/* Metadata Pills */}
+                        <div className="absolute bottom-5 left-5 right-5 flex flex-col gap-2.5">
+                            <div className="flex items-center gap-2 w-max px-3 py-1.5 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700">
+                                <MapPin className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+                                <span className="text-[11px] font-medium text-slate-800 dark:text-slate-200">
+                                    {typeof capturedData.proof.payload.location?.latitude === "number"
+                                        ? `${capturedData.proof.payload.location.latitude.toFixed(4)}, ${capturedData.proof.payload.location.longitude?.toFixed(4)}`
+                                        : "Detecting Location..."}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2 w-max px-3 py-1.5 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700">
+                                <Clock className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+                                <span className="text-[11px] font-medium text-slate-800 dark:text-slate-200">
+                                    {typeof capturedData.proof.payload.timestamp === "number"
+                                        ? new Date(capturedData.proof.payload.timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+                                        : "Unknown Time"}
+                                </span>
                             </div>
                         </div>
 
                         {/* Verification Badge */}
-                        <div className="absolute top-6 right-6 flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/20 backdrop-blur-md border border-green-500/30">
-                            <ShieldCheck className="w-3 h-3 text-green-400" />
-                            <span className="text-[9px] font-mono font-bold text-green-400 uppercase tracking-tight">
+                        <div className="absolute top-5 right-5 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 backdrop-blur-xl border border-emerald-200 dark:border-emerald-500/40 shadow-sm">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest">
                                 Verified Live
                             </span>
                         </div>
                     </div>
 
-                    {/* Proof summary */}
-                    <div className="w-full max-w-md bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
-                        <div className="flex items-center justify-between pb-4 border-b border-white/5">
-                            <h3 className="text-sm font-semibold text-white/90">
-                                Proof of Capture
-                            </h3>
-                            <Hash className="w-4 h-4 text-white/30" />
+                    {/* Proof summary Card */}
+                    <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] p-5 overflow-hidden shadow-sm">
+                        <div className="relative z-10 flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-500/20 border border-indigo-100 dark:border-indigo-500/20">
+                                    <Database className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                                </div>
+                                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Cryptographic Proof</h3>
+                            </div>
+                            <Hash className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                         </div>
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center">
-                                <span className="text-xs text-white/40">
-                                    Image Hash
-                                </span>
-                                <span className="text-[10px] font-mono text-white/60 truncate max-w-37.5">
-                                    {capturedData.proof.payload.hash}
+                        <div className="relative z-10 space-y-3 pt-4">
+                            <div className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800">
+                                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Image Hash</span>
+                                <span className="text-[11px] font-mono text-slate-700 dark:text-slate-300 truncate max-w-[160px]">
+                                    {capturedData.proof.payload.hash || "Pending..."}
                                 </span>
                             </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-xs text-white/40">
-                                    Liveness Delta
-                                </span>
-                                <span className="text-[10px] font-mono text-green-400">
-                                    {capturedData.proof.payload.sensors.orientationDelta.toFixed(
-                                        2,
-                                    )}{" "}
-                                    (PASS)
-                                </span>
+                            <div className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800">
+                                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Liveness Delta</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[11px] font-mono font-medium text-slate-700 dark:text-slate-300">
+                                        Δ {capturedData.proof.payload.sensors.orientationDelta.toFixed(2)}
+                                    </span>
+                                    <span className="px-1.5 py-0.5 rounded text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-500/20 text-[9px] font-bold uppercase tracking-wide">Pass</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex gap-4 w-full max-w-md">
+                    <div className="flex gap-3 w-full max-w-sm pt-2">
                         <button
                             onClick={handleReset}
-                            className="flex-1 py-4 bg-white/5 text-white/70 font-semibold rounded-xl border border-white/10 hover:bg-white/10 transition-all"
+                            className="flex-1 py-3.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-semibold rounded-2xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-[0.98] text-sm tracking-wide"
                         >
                             RETAKE
                         </button>
                         <button
                             onClick={() => setStep("describe")}
-                            className="flex-2 py-4 bg-cyan-500 text-black font-bold rounded-xl hover:bg-cyan-400 transition-all shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2"
+                            className="flex-2 py-3.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold rounded-2xl hover:bg-slate-800 dark:hover:bg-white transition-all shadow-md flex items-center justify-center gap-2 active:scale-[0.98] text-sm tracking-wide"
                         >
                             CONTINUE
                         </button>
@@ -348,20 +336,19 @@ export default function CapturePage() {
             {/* ── Step: Describe Your Moment ───────────── */}
             {step === "describe" && capturedData && (
                 <div className="flex-1 flex flex-col items-center justify-start pt-24 px-6 pb-6 overflow-y-auto animate-in fade-in slide-in-from-right-4 duration-300">
-                    <div className="w-full max-w-md space-y-6">
+                    <div className="w-full max-w-sm space-y-6">
                         <div>
-                            <h2 className="text-2xl font-bold text-white">
-                                Describe Your Moment
+                            <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+                                Describe Moment
                             </h2>
-                            <p className="mt-2 text-sm text-white/50">
-                                Add context to your verified capture before
-                                archiving it permanently.
+                            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                                Add context to your verified capture before archiving it permanently.
                             </p>
                         </div>
 
                         {/* Thumbnail preview */}
                         {imageUrl && (
-                            <div className="w-full aspect-video rounded-2xl overflow-hidden border border-white/10 relative">
+                            <div className="w-full aspect-video rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 relative shadow-sm">
                                 <Image
                                     src={imageUrl}
                                     alt="Preview"
@@ -369,13 +356,14 @@ export default function CapturePage() {
                                     className="object-cover"
                                     unoptimized
                                 />
+                                <div className="absolute inset-0 bg-black/5 ring-1 ring-inset ring-black/10 dark:ring-white/10 rounded-2xl" />
                             </div>
                         )}
 
                         {/* Title */}
                         <div>
-                            <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">
-                                Title *
+                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
+                                Title <span className="text-indigo-500">*</span>
                             </label>
                             <input
                                 type="text"
@@ -383,16 +371,16 @@ export default function CapturePage() {
                                 onChange={(e) => setTitle(e.target.value)}
                                 placeholder="e.g. Coastal Cleanup Morning"
                                 maxLength={100}
-                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30 transition-all"
+                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3.5 text-slate-900 dark:text-slate-100 text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all shadow-sm"
                             />
-                            <p className="mt-1 text-right text-[10px] text-white/30">
+                            <p className="mt-1.5 text-right text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                                 {title.length}/100
                             </p>
                         </div>
 
                         {/* Caption */}
                         <div>
-                            <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">
+                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
                                 Caption
                             </label>
                             <textarea
@@ -401,17 +389,17 @@ export default function CapturePage() {
                                 placeholder="What's happening in this moment?"
                                 maxLength={500}
                                 rows={3}
-                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30 transition-all resize-none"
+                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3.5 text-slate-900 dark:text-slate-100 text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all resize-none shadow-sm"
                             />
-                            <p className="mt-1 text-right text-[10px] text-white/30">
+                            <p className="mt-1.5 text-right text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                                 {caption.length}/500
                             </p>
                         </div>
 
                         {/* Pillar selector */}
                         <div>
-                            <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">
-                                Category *
+                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
+                                Category <span className="text-indigo-500">*</span>
                             </label>
                             <div className="flex flex-wrap gap-2">
                                 {PILLARS.map((p) => {
@@ -423,10 +411,10 @@ export default function CapturePage() {
                                             type="button"
                                             onClick={() => setPillar(p.id)}
                                             className={cn(
-                                                "flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all",
+                                                "flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold transition-all shadow-sm",
                                                 isSelected
-                                                    ? "border-cyan-500 bg-cyan-500/10 text-cyan-400 ring-1 ring-cyan-500/30"
-                                                    : "border-white/10 bg-white/5 text-white/50 hover:border-white/20 hover:text-white/70",
+                                                    ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 ring-1 ring-indigo-500/30"
+                                                    : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800",
                                             )}
                                         >
                                             <Icon className="w-3.5 h-3.5" />
@@ -439,45 +427,41 @@ export default function CapturePage() {
 
                         {/* Location */}
                         <div>
-                            <label className="block text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">
+                            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
                                 Location
                             </label>
                             <div className="relative">
-                                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-cyan-400/60" />
+                                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                 <input
                                     type="text"
                                     value={locationName}
-                                    onChange={(e) =>
-                                        setLocationName(e.target.value)
-                                    }
+                                    onChange={(e) => setLocationName(e.target.value)}
                                     placeholder={
-                                        isGeocodingLocation
-                                            ? "Detecting location..."
-                                            : "Location name"
+                                        isGeocodingLocation ? "Detecting location..." : "Location name"
                                     }
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30 transition-all"
+                                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-11 pr-4 py-3.5 text-slate-900 dark:text-slate-100 text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all shadow-sm"
                                 />
                                 {isGeocodingLocation && (
-                                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 animate-spin" />
+                                    <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 animate-spin" />
                                 )}
                             </div>
                         </div>
 
                         {/* Actions */}
-                        <div className="flex gap-4 pt-4">
+                        <div className="flex gap-3 pt-6 pb-8">
                             <button
                                 onClick={() => setStep("preview")}
-                                className="flex-1 py-4 bg-white/5 text-white/70 font-semibold rounded-xl border border-white/10 hover:bg-white/10 transition-all"
+                                className="flex-1 py-3.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-semibold rounded-2xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-[0.98] text-sm tracking-wide"
                             >
                                 BACK
                             </button>
                             <button
                                 onClick={handleArchive}
                                 disabled={!canArchive}
-                                className="flex-2 py-4 bg-cyan-500 text-black font-bold rounded-xl hover:bg-cyan-400 transition-all shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                                className="flex-2 py-3.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold rounded-2xl hover:bg-slate-800 dark:hover:bg-white transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] text-sm tracking-wide"
                             >
-                                <UploadCloud className="w-5 h-5" />
-                                ARCHIVE MOMENT
+                                <UploadCloud className="w-4 h-4" />
+                                ARCHIVE
                             </button>
                         </div>
                     </div>
@@ -487,14 +471,17 @@ export default function CapturePage() {
             {/* ── Step: Archiving (Progress) ───────────── */}
             {step === "archiving" && (
                 <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-8 animate-in fade-in duration-300">
-                    <div className="w-20 h-20 rounded-full bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
-                        <Loader2 className="w-10 h-10 text-cyan-400 animate-spin" />
+                    <div className="relative w-24 h-24 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-indigo-100 dark:bg-indigo-500/20 rounded-full blur-2xl animate-pulse" />
+                        <div className="relative z-10 w-20 h-20 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center shadow-sm">
+                            <Loader2 className="w-8 h-8 text-indigo-600 dark:text-indigo-400 animate-spin" />
+                        </div>
                     </div>
-                    <div className="text-center space-y-2">
-                        <h2 className="text-xl font-bold text-white">
+                    <div className="text-center space-y-3">
+                        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
                             Archiving...
                         </h2>
-                        <p className="text-sm text-white/50">
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 animate-pulse">
                             {archiveProgress}
                         </p>
                     </div>
@@ -503,70 +490,67 @@ export default function CapturePage() {
 
             {/* ── Step: Done (Success) ─────────────────── */}
             {step === "done" && archiveResult && (
-                <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-8 animate-in fade-in zoom-in duration-700">
-                    <div className="w-24 h-24 rounded-full bg-green-500/20 flex items-center justify-center border border-green-500/30 mb-4">
-                        <Check className="w-12 h-12 text-green-400" />
+                <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-8 animate-in fade-in zoom-in-95 duration-700">
+                    <div className="relative w-32 h-32 flex items-center justify-center mb-2">
+                        <div className="absolute inset-0 bg-emerald-100 dark:bg-emerald-500/20 rounded-full blur-[30px] animate-pulse" />
+                        <div className="relative z-10 w-24 h-24 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center shadow-sm border-2 border-emerald-200 dark:border-emerald-500/30">
+                            <Check className="w-10 h-10 text-emerald-600 dark:text-emerald-400" />
+                        </div>
                     </div>
 
-                    <div className="text-center space-y-2">
-                        <h2 className="text-2xl font-bold text-white">
-                            Moment Archived
+                    <div className="text-center space-y-3">
+                        <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+                            Archived
                         </h2>
-                        <p className="text-white/50 text-sm max-w-xs mx-auto">
-                            Your verified human moment is now permanently stored
-                            on the decentralized web.
+                        <p className="text-slate-500 dark:text-slate-400 text-sm max-w-[260px] mx-auto leading-relaxed">
+                            Your verified human moment is now permanently stored on the decentralized web.
                         </p>
                     </div>
 
-                    <div className="w-full max-w-md bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
+                    <div className="w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] p-5 space-y-4 shadow-sm">
                         <div className="space-y-3">
-                            <div className="flex justify-between items-center">
-                                <span className="text-xs text-white/40">
-                                    IPFS CID
-                                </span>
+                            <div className="flex justify-between items-center p-2">
+                                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">IPFS CID</span>
                                 <a
                                     href={archiveResult.imageUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-[10px] font-mono text-cyan-400 hover:underline truncate max-w-45"
+                                    className="text-[11px] font-mono font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline truncate max-w-[160px] transition-colors"
                                 >
                                     {archiveResult.imageHash}
                                 </a>
                             </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-xs text-white/40">
-                                    Proof Link
-                                </span>
+                            <div className="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800">
+                                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Proof Link</span>
                                 <a
                                     href={archiveResult.proofUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-[10px] font-mono text-cyan-400 hover:underline truncate max-w-45"
+                                    className="text-[11px] font-mono font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline truncate max-w-[160px] transition-colors flex items-center gap-1"
                                 >
                                     view_proof.json
+                                    <ArrowUpRight className="w-3 h-3" />
                                 </a>
                             </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-xs text-white/40">
-                                    Status
-                                </span>
-                                <span className="text-[10px] font-bold text-green-400 uppercase tracking-widest">
+                            <div className="flex justify-between items-center p-2">
+                                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</span>
+                                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/20 px-2 py-1 rounded border border-emerald-200 dark:border-emerald-500/30 uppercase tracking-widest">
                                     Permanent
                                 </span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex gap-4 w-full max-w-md">
+                    <div className="flex gap-3 w-full max-w-sm pt-4">
                         <button
                             onClick={handleReset}
-                            className="flex-1 py-4 bg-white/5 text-white/70 font-semibold rounded-xl border border-white/10 hover:bg-white/10 transition-all"
+                            className="flex-1 py-3.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-semibold rounded-2xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-[0.98] text-sm tracking-wide"
                         >
-                            CAPTURE ANOTHER
+                            CAPTURE NEW
                         </button>
                         <button
                             onClick={() => router.push("/feed")}
-                            className="flex-2 py-4 bg-white text-black font-bold rounded-xl hover:bg-white/90 transition-all flex items-center justify-center gap-2"
+                            className="flex-2 py-3.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold rounded-2xl hover:bg-slate-800 dark:hover:bg-white transition-all shadow-md flex items-center justify-center gap-2 active:scale-[0.98] text-sm tracking-wide"
                         >
                             VIEW IN FEED
                         </button>
