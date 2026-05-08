@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 
-const CAPTURE_LIMIT = 5;
+const CAPTURE_LIMIT = 100;
 const CAPTURE_WINDOW_MS = 24 * 60 * 60 * 1000;
 const CAPTURE_HISTORY_KEY = "obelisk-camera-capture-history-v1";
 
