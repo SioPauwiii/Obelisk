@@ -1,6 +1,7 @@
 CREATE TABLE public.users (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   email text,
+  handle text UNIQUE,
   full_name text,
   avatar_url text,
   wallet_address text UNIQUE,
@@ -22,3 +23,7 @@ ALTER TABLE public.users ALTER COLUMN wallet_address DROP NOT NULL;
 
 -- Index for fast DID lookups
 CREATE INDEX IF NOT EXISTS idx_users_privy_did ON public.users (privy_did);
+
+-- Add unique handle column for user identity (e.g. @rin)
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS handle TEXT UNIQUE;
+CREATE INDEX IF NOT EXISTS idx_users_handle ON public.users (handle);

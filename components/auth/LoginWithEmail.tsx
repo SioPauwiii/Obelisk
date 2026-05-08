@@ -63,8 +63,16 @@ export function LoginWithEmail() {
                     <input
                         id="code"
                         type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={6}
                         value={code}
-                        onChange={(e) => setCode(e.target.value)}
+                        onChange={(e) => {
+                            const value = e.target.value
+                                .replace(/\D/g, "")
+                                .slice(0, 6);
+                            setCode(value);
+                        }}
                         placeholder="123456"
                         className="block w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm tracking-widest text-slate-900 shadow-sm transition-colors placeholder:text-slate-400 placeholder:tracking-normal focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-cyan-500 dark:focus:ring-cyan-500"
                     />

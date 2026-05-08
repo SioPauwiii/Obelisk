@@ -11,9 +11,10 @@ import { z } from "zod";
 // so the Edge middleware grants access to protected routes.
 // ─────────────────────────────────────────────────────
 
+const HANDLE_REGEX = /^[a-z][a-z0-9_]{2,19}$/;
+
 const onboardingSchema = z.object({
-    firstName: z.string().min(2).max(50),
-    lastName: z.string().min(1).max(50),
+    handle: z.string().min(3).max(20).regex(HANDLE_REGEX, "Handle must start with a letter, lowercase alphanumeric and underscores only"),
     country: z.string().min(1).max(100),
     pillarPreference: z.array(z.string()).min(1),
 });
@@ -59,24 +60,38 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const { firstName, lastName, country, pillarPreference } = parsed.data;
-        const fullName = `${firstName} ${lastName}`.trim();
+        const { handle, country, pillarPreference } = parsed.data;
         const pillarPreferenceStr = pillarPreference.join(",");
 
-        // ── 3. Update user record ────────────────────
+        // ── 3. Check handle uniqueness ───────────────
         const supabase = createAdminClient();
 
+        const { data: existing } = await supabase
+            .from("users")
+            .select("id")
+            .eq("handle", handle)
+            .neq("id", userId)
+            .single();
+
+        if (existing) {
+            return NextResponse.json(
+                { error: "This handle is already taken" },
+                { status: 409 },
+            );
+        }
+
+        // ── 4. Update user record ────────────────────
         const { data: updatedUser, error: updateError } = await supabase
             .from("users")
             .update({
-                full_name: fullName,
+                handle,
                 country,
                 pillar_preference: pillarPreferenceStr,
                 updated_at: new Date().toISOString(),
             })
             .eq("id", userId)
             .select(
-                "id, privy_did, email, full_name, avatar_url, wallet_address, auth_provider, is_verified_human, humanity_score, country, pillar_preference, voucher_count, created_at, updated_at",
+                "id, privy_did, handle, email, full_name, avatar_url, wallet_address, auth_provider, is_verified_human, humanity_score, country, pillar_preference, voucher_count, created_at, updated_at",
             )
             .single();
 
