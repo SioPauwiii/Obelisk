@@ -41,7 +41,7 @@ export default function LoginPage() {
                         {/* Make sure you have this image in your public folder, or change the src */}
                         <Image
                             src="/obelisk_logo.png"
-                            alt="Logo"
+                            alt="Obelisk Logo"
                             className="h-10 w-10 object-contain"
                             width={40}
                             height={40}
@@ -113,22 +113,41 @@ export default function LoginPage() {
 
             {/* ─── VISUAL SECTION ───────────────────── */}
             <div className="relative hidden lg:flex items-center justify-center bg-[#0d1128] overflow-hidden">
-                {/* Ambient background glows matching the logo */}
+                {/* Ambient background glows */}
                 <div className="absolute top-1/4 left-1/4 w-100 h-100 bg-cyan-500/20 blur-[120px] rounded-full pointer-events-none" />
                 <div className="absolute bottom-1/4 right-1/4 w-112.5 h-112.5 bg-indigo-600/30 blur-[120px] rounded-full pointer-events-none" />
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-50 h-50 bg-yellow-300/10 blur-[80px] rounded-full pointer-events-none" />
 
-                <div className="absolute inset-0 bg-linear-to-t from-[#0d1128] via-transparent to-transparent z-10 pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0d1128] via-transparent to-transparent z-10 pointer-events-none" />
 
+                {/* Content */}
+                <div className="relative z-20 text-center px-12">
+                    <div className="mb-8">
+                        <Image
+                            src="/obelisk_logo.png"
+                            alt="Obelisk"
+                            width={120}
+                            height={120}
+                            className="mx-auto opacity-90"
+                        />
+                    </div>
+                    <h2 className="text-3xl font-bold text-white mb-4 tracking-tight">
+                        Humanity Archive
+                    </h2>
+                    <p className="text-cyan-200/80 text-lg leading-relaxed max-w-sm mx-auto">
+                        Every moment verified. Every memory permanent. Your
+                        authentic human legacy, preserved forever.
+                    </p>
+                </div>
+
+                {/* Bottom quote */}
                 <div className="absolute bottom-10 left-10 right-10 z-20">
                     <blockquote className="space-y-2 text-cyan-50">
-                        <p className="text-lg font-medium leading-relaxed">
-                            &ldquo;Securely access Obelisk — a
-                            blockchain-powered humanity archive preserving
+                        <p className="text-sm font-medium leading-relaxed opacity-70">
+                            &ldquo;A blockchain-powered archive preserving
                             identity, authenticity, and digital legacy for
                             future generations.&rdquo;
                         </p>
-                        <footer className="text-sm font-semibold text-cyan-400/80 tracking-wide"></footer>
                     </blockquote>
                 </div>
             </div>
