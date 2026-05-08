@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
+import { useAuth } from "@/hooks/useAuth";
 import {
     Camera,
     Globe,
@@ -60,6 +61,7 @@ interface Post {
     captured_at: string;
     created_at: string;
     users: PostUser;
+    has_vouched?: boolean;
 }
 
 // ─────────────────────────────────────────────────────
@@ -107,11 +109,17 @@ function timeAgo(dateStr: string): string {
 // ─────────────────────────────────────────────────────
 // Post Card
 // ─────────────────────────────────────────────────────
-function PostCard({ post }: { post: Post }) {
+function PostCard({
+    post,
+    currentUserId,
+}: {
+    post: Post;
+    currentUserId: string | null;
+}) {
     const [showProof, setShowProof] = useState(false);
     const [imageError, setImageError] = useState(false);
     const [vouchCount, setVouchCount] = useState(post.vouch_count);
-    const [hasVouched, setHasVouched] = useState(false);
+    const [hasVouched, setHasVouched] = useState(Boolean(post.has_vouched));
     const [isVouching, setIsVouching] = useState(false);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -141,6 +149,7 @@ function PostCard({ post }: { post: Post }) {
     const isLongTitle = post.title.length > 90;
     const isLongCaption = (post.caption?.length ?? 0) > 180;
     const canExpandText = isLongTitle || isLongCaption;
+    const isOwnPost = currentUserId === post.user_id;
 
     // Debug: log image URL on mount and when it changes
     useEffect(() => {
@@ -171,7 +180,7 @@ function PostCard({ post }: { post: Post }) {
                 setHasVouched(false);
                 alert(data.error ?? "Failed to vouch");
             }
-        } catch (err) {
+        } catch {
             // Revert on network error
             setVouchCount((prev) => prev - 1);
             setHasVouched(false);
@@ -485,25 +494,39 @@ function PostCard({ post }: { post: Post }) {
 
             {/* Actions */}
             <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 px-4 py-3">
-                <button
-                    onClick={handleVouch}
-                    disabled={isVouching || hasVouched}
-                    className={cn(
-                        "flex items-center gap-2 text-sm font-medium transition-colors",
-                        hasVouched
-                            ? "text-indigo-600 dark:text-indigo-400 cursor-default"
-                            : "text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400",
-                        isVouching && "opacity-50 cursor-wait",
-                    )}
-                >
-                    <ArrowUpRight className={cn("h-4 w-4", hasVouched && "text-indigo-600 dark:text-indigo-400")} />
-                    <span>{hasVouched ? "Vouched" : "Vouch"} ({vouchCount})</span>
-                </button>
+                {isOwnPost ? (
+                    <span className="flex items-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400">
+                        <ArrowUpRight className="h-4 w-4 text-slate-400 dark:text-slate-600" />
+                        <span>Vouch ({vouchCount})</span>
+                    </span>
+                ) : (
+                    <button
+                        onClick={handleVouch}
+                        disabled={isVouching || hasVouched}
+                        className={cn(
+                            "flex items-center gap-2 text-sm font-medium transition-colors",
+                            hasVouched
+                                ? "text-indigo-600 dark:text-indigo-400 cursor-not-allowed"
+                                : "text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400",
+                            isVouching && "opacity-50 cursor-wait",
+                        )}
+                    >
+                        <ArrowUpRight
+                            className={cn(
+                                "h-4 w-4",
+                                hasVouched &&
+                                    "text-indigo-600 dark:text-indigo-400",
+                            )}
+                        />
+                        <span>
+                            {hasVouched ? "Vouched" : "Vouch"} ({vouchCount})
+                        </span>
+                    </button>
+                )}
             </div>
         </article>
     );
 }
-
 
 // ─────────────────────────────────────────────────────
 // Loading Skeleton
@@ -578,6 +601,7 @@ function NoSearchResults({ query }: { query: string }) {
 // Feed Page
 // ─────────────────────────────────────────────────────
 export default function FeedPage() {
+    const { user } = useAuth();
     const [activeFilter, setActiveFilter] = useState("all");
     const [searchInput, setSearchInput] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -607,30 +631,6 @@ export default function FeedPage() {
         <main className="flex-1 overflow-y-auto pb-20 mt-16">
             {/* Pillar Filter Tabs */}
             <div className="sticky top-0 z-30 w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-                <div className="px-4 md:px-6 py-3 border-b border-slate-200/80 dark:border-slate-800/80">
-                    <div className="mx-auto max-w-2xl">
-                        <label className="relative block">
-                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                            <input
-                                type="text"
-                                value={searchInput}
-                                onChange={(e) => setSearchInput(e.target.value)}
-                                placeholder="Search title, @handle, IPFS CID, tx hash..."
-                                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 py-2.5 pl-9 pr-10 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
-                            />
-                            {searchInput && (
-                                <button
-                                    type="button"
-                                    onClick={() => setSearchInput("")}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                                    aria-label="Clear search"
-                                >
-                                    <X className="h-4 w-4" />
-                                </button>
-                            )}
-                        </label>
-                    </div>
-                </div>
                 <div className="flex overflow-x-auto no-scrollbar">
                     {PILLAR_FILTERS.map((f) => {
                         const Icon = f.icon;
@@ -655,13 +655,16 @@ export default function FeedPage() {
             </div>
 
             {/* Content */}
-            <div className="mx-auto max-w-2xl flex flex-col gap-5 p-4 md:p-6">
+            <div className="mx-auto w-full max-w-7xl px-4 md:px-6 py-6">
                 {isLoading ? (
-                    <>
+                    <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                         <PostSkeleton />
                         <PostSkeleton />
                         <PostSkeleton />
-                    </>
+                        <PostSkeleton />
+                        <PostSkeleton />
+                        <PostSkeleton />
+                    </div>
                 ) : posts.length === 0 ? (
                     debouncedSearch ? (
                         <NoSearchResults query={debouncedSearch} />
@@ -669,12 +672,161 @@ export default function FeedPage() {
                         <EmptyState />
                     )
                 ) : (
-                    posts.map((post) => (
-                        <PostCard
-                            key={`${post.id}:${post.image_cid}:${post.proof_cid}`}
-                            post={post}
-                        />
-                    ))
+                    <div className="space-y-8">
+                        {/* Featured Post */}
+                        {posts[0] && (
+                            <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 shadow-md dark:border-slate-800 dark:from-slate-900 dark:to-slate-950 overflow-hidden hover:shadow-lg transition-shadow">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+                                    {/* Featured Image */}
+                                    <div className="flex flex-col gap-2 order-2 md:order-1">
+                                        <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 group">
+                                            {posts[0].image_urls?.[0] && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        // This would need state management, simplified for now
+                                                    }}
+                                                    className="absolute inset-0 block w-full h-full cursor-zoom-in"
+                                                >
+                                                    <Image
+                                                        src={
+                                                            posts[0]
+                                                                .image_urls[0]
+                                                        }
+                                                        alt={posts[0].title}
+                                                        fill
+                                                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                                        unoptimized
+                                                    />
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="flex gap-1 flex-wrap">
+                                            {posts[0].image_urls
+                                                ?.slice(0, 3)
+                                                .map((url, idx) => (
+                                                    <div
+                                                        key={`featured-thumb-${idx}`}
+                                                        className="relative h-16 w-16 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 flex-shrink-0"
+                                                    >
+                                                        <Image
+                                                            src={url}
+                                                            alt={`${posts[0].title} ${idx + 1}`}
+                                                            fill
+                                                            className="object-cover"
+                                                            unoptimized
+                                                        />
+                                                    </div>
+                                                ))}
+                                            {posts[0].image_urls &&
+                                                posts[0].image_urls.length >
+                                                    3 && (
+                                                    <div className="h-16 w-16 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-sm font-semibold text-slate-600 dark:text-slate-400 flex-shrink-0 border border-slate-200 dark:border-slate-700">
+                                                        +
+                                                        {posts[0].image_urls
+                                                            .length - 3}
+                                                    </div>
+                                                )}
+                                        </div>
+                                    </div>
+
+                                    {/* Featured Content */}
+                                    <div className="flex flex-col justify-between order-1 md:order-2">
+                                        <div className="space-y-4">
+                                            <div className="flex items-start justify-between gap-4">
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <div className="h-8 w-8 rounded-full bg-linear-to-br from-indigo-500 to-cyan-500 shrink-0" />
+                                                        <div>
+                                                            <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                                                                @
+                                                                {posts[0].users
+                                                                    .handle ??
+                                                                    "anonymous"}
+                                                            </p>
+                                                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                                {timeAgo(
+                                                                    posts[0]
+                                                                        .created_at,
+                                                                )}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <span
+                                                    className={cn(
+                                                        "rounded-full px-3 py-1 text-xs font-semibold capitalize whitespace-nowrap",
+                                                        PILLAR_COLORS[
+                                                            posts[0].pillar
+                                                        ] ??
+                                                            "bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+                                                    )}
+                                                >
+                                                    {posts[0].pillar}
+                                                </span>
+                                            </div>
+
+                                            <div>
+                                                <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-slate-100 leading-tight mb-3 wrap-anywhere">
+                                                    {posts[0].title}
+                                                </h2>
+                                                {posts[0].caption && (
+                                                    <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-3 wrap-anywhere">
+                                                        {posts[0].caption}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            {posts[0].location_name && (
+                                                <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                                                    <MapPin className="h-4 w-4 flex-shrink-0" />
+                                                    {posts[0].location_name}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
+                                            <div className="flex items-center gap-3 text-sm">
+                                                {posts[0].tx_hash && (
+                                                    <a
+                                                        href={`https://testnet.snowtrace.io/tx/${posts[0].tx_hash}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 font-semibold"
+                                                    >
+                                                        <ShieldCheck className="h-4 w-4" />
+                                                        On-Chain
+                                                    </a>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">
+                                                    <ArrowUpRight className="h-4 w-4 inline-block mr-1 text-indigo-600 dark:text-indigo-400" />
+                                                    {posts[0].vouch_count}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Grid of Remaining Posts */}
+                        <div>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 mb-4">
+                                Recent
+                            </h3>
+                            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                                {posts.map((post) => (
+                                    <PostCard
+                                        key={`${post.id}:${post.image_cid}:${post.proof_cid}:${post.has_vouched ? 1 : 0}`}
+                                        post={post}
+                                        currentUserId={user?.id ?? null}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
         </main>

@@ -239,8 +239,30 @@ export async function GET(req: NextRequest) {
         const total = count ?? 0;
         const hasMore = offset + limit < total;
 
+        const postIds = (posts ?? []).map((post) => post.id);
+        let vouchedPostIds = new Set<string>();
+
+        if (postIds.length > 0) {
+            const { data: vouches, error: vouchFetchError } = await supabase
+                .from("vouches")
+                .select("post_id")
+                .eq("voucher_id", userId)
+                .in("post_id", postIds);
+
+            if (vouchFetchError) {
+                console.error("Failed to fetch user vouches:", vouchFetchError);
+            } else {
+                vouchedPostIds = new Set((vouches ?? []).map((v) => v.post_id));
+            }
+        }
+
+        const postsWithVouchState = (posts ?? []).map((post) => ({
+            ...post,
+            has_vouched: vouchedPostIds.has(post.id),
+        }));
+
         return NextResponse.json({
-            posts: posts ?? [],
+            posts: postsWithVouchState,
             hasMore,
             total,
             page,
