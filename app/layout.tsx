@@ -3,6 +3,7 @@ import "./globals.css";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { Providers } from "@/components/Providers";
+import { ToastContainer, Slide } from "react-toastify";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -59,6 +60,19 @@ export default function RootLayout({
         >
             <body className="min-h-full flex flex-col">
                 <Providers>{children}</Providers>
+                <ToastContainer
+                    position="top-right"
+                    autoClose={5000}
+                    hideProgressBar={false}
+                    newestOnTop={false}
+                    closeOnClick
+                    rtl={false}
+                    pauseOnFocusLoss
+                    draggable
+                    pauseOnHover
+                    theme="colored"
+                    transition={Slide}
+                />
             </body>
         </html>
     );
