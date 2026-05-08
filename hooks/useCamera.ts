@@ -53,8 +53,18 @@ export const useCamera = () => {
     const [isPermissionGranted, setIsPermissionGranted] = useState(false);
     const [isCapturing, setIsCapturing] = useState(false);
     const [livenessScore, setLivenessScore] = useState(0);
-    const [captureCount, setCaptureCount] = useState(0);
-    const [nextResetAt, setNextResetAt] = useState<number | null>(null);
+    const [captureCount, setCaptureCount] = useState(() => {
+        const now = Date.now();
+        const history = getValidCaptureHistory(now);
+        saveCaptureHistory(history);
+        return history.length;
+    });
+    const [nextResetAt, setNextResetAt] = useState<number | null>(() => {
+        const now = Date.now();
+        const history = getValidCaptureHistory(now);
+        saveCaptureHistory(history);
+        return history.length > 0 ? history[0] + CAPTURE_WINDOW_MS : null;
+    });
 
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -87,16 +97,6 @@ export const useCamera = () => {
             setLivenessScore(maxDelta.current);
         }
     };
-
-    const syncCaptureLimitState = useCallback(() => {
-        const now = Date.now();
-        const history = getValidCaptureHistory(now);
-        setCaptureCount(history.length);
-        setNextResetAt(
-            history.length > 0 ? history[0] + CAPTURE_WINDOW_MS : null,
-        );
-        saveCaptureHistory(history);
-    }, []);
 
     const markCaptureConsumed = useCallback(() => {
         const now = Date.now();
@@ -286,10 +286,6 @@ export const useCamera = () => {
             videoRef.current.srcObject = stream;
         }
     }, [stream, isPermissionGranted]);
-
-    useEffect(() => {
-        syncCaptureLimitState();
-    }, [syncCaptureLimitState]);
 
     useEffect(() => {
         return () => {

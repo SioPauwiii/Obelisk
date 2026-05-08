@@ -4,12 +4,9 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Camera } from "@/components/camera/Camera";
 import {
-    ShieldCheck,
     ArrowLeft,
     UploadCloud,
     MapPin,
-    Clock,
-    Hash,
     Loader2,
     Check,
     Dna,
@@ -18,7 +15,6 @@ import {
     Globe,
     Rocket,
     HeartHandshake,
-    Database,
     ArrowUpRight,
     type LucideIcon,
 } from "lucide-react";
@@ -40,7 +36,7 @@ const PILLARS: { id: string; label: string; icon: LucideIcon }[] = [
     { id: "community", label: "Community", icon: HeartHandshake },
 ];
 
-type CaptureStep = "camera" | "preview" | "describe" | "archiving" | "done";
+type CaptureStep = "camera" | "describe" | "archiving" | "done";
 
 type ProofPayload = {
     payload: {
@@ -53,15 +49,20 @@ type ProofPayload = {
     [k: string]: unknown;
 };
 
+type CapturedMoment = {
+    id: string;
+    blob: Blob;
+    proof: ProofPayload;
+    imageUrl: string;
+};
+
 export default function CapturePage() {
     const router = useRouter();
 
     const [step, setStep] = useState<CaptureStep>("camera");
-    const [capturedData, setCapturedData] = useState<{
-        blob: Blob;
-        proof: ProofPayload;
-    } | null>(null);
-    const [imageUrl, setImageUrl] = useState<string | null>(null);
+    const [captures, setCaptures] = useState<CapturedMoment[]>([]);
+    const [selectedCaptureIds, setSelectedCaptureIds] = useState<string[]>([]);
+    const [isGalleryOpen, setIsGalleryOpen] = useState(false);
 
     // Describe form state
     const [title, setTitle] = useState("");
@@ -72,12 +73,18 @@ export default function CapturePage() {
 
     // Archive result
     const [archiveResult, setArchiveResult] = useState<{
-        imageHash: string;
-        proofHash: string;
-        imageUrl: string;
-        proofUrl: string;
+        imageHashes: string[];
+        proofHashes: string[];
+        imageUrls: string[];
+        proofUrls: string[];
     } | null>(null);
     const [archiveProgress, setArchiveProgress] = useState("");
+
+    const selectedCaptures = captures.filter((capture) =>
+        selectedCaptureIds.includes(capture.id),
+    );
+    const activeCapture =
+        selectedCaptures[0] ?? captures[captures.length - 1] ?? null;
 
     // ── Camera capture handler ────────────────────────
     const handleCapture = ({
@@ -87,16 +94,55 @@ export default function CapturePage() {
         blob: Blob;
         proof: ProofPayload;
     }) => {
-        setCapturedData({ blob, proof });
-        setImageUrl(URL.createObjectURL(blob));
-        setStep("preview");
+        const id = crypto.randomUUID();
+        const imageUrl = URL.createObjectURL(blob);
+        setCaptures((current) => [...current, { id, blob, proof, imageUrl }]);
+        setSelectedCaptureIds((current) =>
+            current.includes(id) ? current : [...current, id],
+        );
+        setStep("camera");
     };
 
-    // ── Auto-geocode when entering preview ────────────
-    useEffect(() => {
-        if (step !== "preview" || !capturedData) return;
+    const handleOpenGallery = () => {
+        if (!captures.length) return;
+        setIsGalleryOpen(true);
+    };
 
-        const loc = capturedData.proof.payload.location;
+    const handleToggleCapture = (id: string) => {
+        setSelectedCaptureIds((current) =>
+            current.includes(id)
+                ? current.filter((captureId) => captureId !== id)
+                : [...current, id],
+        );
+    };
+
+    const handleRemoveCapture = (id: string) => {
+        setCaptures((current) => {
+            const target = current.find((capture) => capture.id === id);
+            if (target) URL.revokeObjectURL(target.imageUrl);
+
+            const next = current.filter((capture) => capture.id !== id);
+            setSelectedCaptureIds((currentSelected) =>
+                currentSelected.filter((captureId) => captureId !== id),
+            );
+            if (!next.length) {
+                setIsGalleryOpen(false);
+            }
+            return next;
+        });
+    };
+
+    const handlePostSelected = () => {
+        if (!selectedCaptures.length) return;
+        setIsGalleryOpen(false);
+        setStep("describe");
+    };
+
+    // ── Auto-geocode when entering describe ───────────
+    useEffect(() => {
+        if (step !== "describe" || !activeCapture) return;
+
+        const loc = activeCapture.proof.payload.location;
         if (
             loc &&
             typeof loc.latitude === "number" &&
@@ -126,13 +172,14 @@ export default function CapturePage() {
                 clearTimeout(id);
             };
         }
-    }, [step, capturedData]);
+    }, [step, activeCapture]);
 
     // ── Reset everything ──────────────────────────────
     const handleReset = () => {
-        setCapturedData(null);
-        if (imageUrl) URL.revokeObjectURL(imageUrl);
-        setImageUrl(null);
+        captures.forEach((capture) => URL.revokeObjectURL(capture.imageUrl));
+        setCaptures([]);
+        setSelectedCaptureIds([]);
+        setIsGalleryOpen(false);
         setArchiveResult(null);
         setTitle("");
         setCaption("");
@@ -144,30 +191,36 @@ export default function CapturePage() {
 
     // ── Archive + Save ────────────────────────────────
     const handleArchive = async () => {
-        if (!capturedData || !title || !pillar) return;
+        if (!selectedCaptures.length || !title || !pillar) return;
 
         setStep("archiving");
 
         try {
             // 1. Upload to Lighthouse
             setArchiveProgress("Uploading to IPFS...");
-            const { archiveMoment } = await import("@/lib/utils/storage");
-            const result = await archiveMoment(
-                capturedData.blob,
-                capturedData.proof,
+            const { archiveMoments } = await import("@/lib/utils/storage");
+            const result = await archiveMoments(
+                selectedCaptures.map((capture) => ({
+                    blob: capture.blob,
+                    proof: capture.proof,
+                    label: capture.proof.payload.hash ?? capture.id,
+                })),
             );
             setArchiveResult(result);
 
             console.log("[Capture] Archive result:", {
-                imageHash: result.imageHash,
-                imageUrl: result.imageUrl,
-                proofHash: result.proofHash,
-                proofUrl: result.proofUrl,
+                imageHashes: result.imageHashes,
+                imageUrls: result.imageUrls,
+                proofHashes: result.proofHashes,
+                proofUrls: result.proofUrls,
             });
 
             // 2. Save to Supabase
             setArchiveProgress("Saving to archive...");
-            const proof = capturedData.proof;
+            const proof = activeCapture?.proof;
+            if (!proof) {
+                throw new Error("No selected capture available for archiving");
+            }
             const postPayload = {
                 title,
                 caption,
@@ -175,10 +228,14 @@ export default function CapturePage() {
                 locationName,
                 latitude: proof.payload.location?.latitude,
                 longitude: proof.payload.location?.longitude,
-                imageCid: result.imageHash,
-                proofCid: result.proofHash,
-                imageUrl: result.imageUrl,
-                proofUrl: result.proofUrl,
+                imageCid: result.imageHashes[0],
+                proofCid: result.proofHashes[0],
+                imageUrl: result.imageUrls[0],
+                proofUrl: result.proofUrls[0],
+                imageCids: result.imageHashes,
+                proofCids: result.proofHashes,
+                imageUrls: result.imageUrls,
+                proofUrls: result.proofUrls,
                 livenessScore: proof.payload.sensors.orientationDelta,
                 capturedAt:
                     typeof proof.payload.timestamp === "number"
@@ -236,105 +293,116 @@ export default function CapturePage() {
             </div>
 
             {/* ── Step: Camera ─────────────────────────── */}
-            {step === "camera" && <Camera onCapture={handleCapture} />}
+            {step === "camera" && (
+                <Camera
+                    onCapture={handleCapture}
+                    capturedImageUrl={activeCapture?.imageUrl ?? null}
+                    onOpenArchive={handleOpenGallery}
+                    onRetake={handleReset}
+                />
+            )}
 
-            {/* ── Step: Preview ─────────────────────────── */}
-            {step === "preview" && capturedData && (
-                <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-6 animate-in fade-in zoom-in-95 duration-500 overflow-y-auto">
-                    <div className="relative group max-w-sm w-full aspect-[4/5] rounded-[2rem] overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-slate-100 dark:bg-slate-900">
-                        {/* Image */}
-                        {imageUrl && (
-                            <div className="absolute inset-0 w-full h-full">
-                                <Image
-                                    src={imageUrl}
-                                    alt="Captured"
-                                    fill
-                                    className="object-cover transition-transform duration-700 group-hover:scale-105"
-                                    unoptimized
-                                />
+            {isGalleryOpen && (
+                <div className="absolute inset-0 z-60 bg-black/80 backdrop-blur-xl px-4 py-6 overflow-y-auto">
+                    <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                                    Gallery
+                                </p>
+                                <h2 className="mt-2 text-2xl font-bold text-white">
+                                    Pick a photo to post
+                                </h2>
                             </div>
-                        )}
-                        {/* Elegant Vignette */}
-                        <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-90" />
-
-                        {/* Metadata Pills */}
-                        <div className="absolute bottom-5 left-5 right-5 flex flex-col gap-2.5">
-                            <div className="flex items-center gap-2 w-max px-3 py-1.5 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700">
-                                <MapPin className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
-                                <span className="text-[11px] font-medium text-slate-800 dark:text-slate-200">
-                                    {typeof capturedData.proof.payload.location?.latitude === "number"
-                                        ? `${capturedData.proof.payload.location.latitude.toFixed(4)}, ${capturedData.proof.payload.location.longitude?.toFixed(4)}`
-                                        : "Detecting Location..."}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-2 w-max px-3 py-1.5 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700">
-                                <Clock className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-                                <span className="text-[11px] font-medium text-slate-800 dark:text-slate-200">
-                                    {typeof capturedData.proof.payload.timestamp === "number"
-                                        ? new Date(capturedData.proof.payload.timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-                                        : "Unknown Time"}
-                                </span>
-                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsGalleryOpen(false)}
+                                className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10"
+                            >
+                                Close
+                            </button>
                         </div>
 
-                        {/* Verification Badge */}
-                        <div className="absolute top-5 right-5 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 backdrop-blur-xl border border-emerald-200 dark:border-emerald-500/40 shadow-sm">
-                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest">
-                                Verified Live
-                            </span>
+                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                            {captures.map((capture) => {
+                                const selected = selectedCaptureIds.includes(
+                                    capture.id,
+                                );
+                                return (
+                                    <div
+                                        key={capture.id}
+                                        className={cn(
+                                            "group relative overflow-hidden rounded-2xl border bg-white/5",
+                                            selected
+                                                ? "border-emerald-400/70 ring-2 ring-emerald-400/30"
+                                                : "border-white/10",
+                                        )}
+                                    >
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                handleToggleCapture(capture.id)
+                                            }
+                                            className="block w-full"
+                                        >
+                                            <Image
+                                                src={capture.imageUrl}
+                                                alt="Gallery capture"
+                                                width={800}
+                                                height={1000}
+                                                className="h-56 w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                                                unoptimized
+                                            />
+                                        </button>
+                                        <div className="absolute left-3 top-3 rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
+                                            {selected
+                                                ? "Selected"
+                                                : "Tap to select"}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                handleRemoveCapture(capture.id)
+                                            }
+                                            className="absolute right-3 top-3 rounded-full bg-black/70 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white/80 transition-colors hover:bg-red-500 hover:text-white"
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                );
+                            })}
                         </div>
-                    </div>
 
-                    {/* Proof summary Card */}
-                    <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] p-5 overflow-hidden shadow-sm">
-                        <div className="relative z-10 flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-                            <div className="flex items-center gap-2.5">
-                                <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-500/20 border border-indigo-100 dark:border-indigo-500/20">
-                                    <Database className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                                </div>
-                                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Cryptographic Proof</h3>
+                        <div className="sticky bottom-0 mt-2 flex flex-col gap-3 rounded-3xl border border-white/10 bg-black/60 p-4 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+                            <div className="text-sm text-white/70">
+                                {selectedCaptures.length > 0
+                                    ? `${selectedCaptures.length} image${selectedCaptures.length === 1 ? "" : "s"} selected for posting`
+                                    : "No image selected"}
                             </div>
-                            <Hash className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-                        </div>
-                        <div className="relative z-10 space-y-3 pt-4">
-                            <div className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800">
-                                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Image Hash</span>
-                                <span className="text-[11px] font-mono text-slate-700 dark:text-slate-300 truncate max-w-[160px]">
-                                    {capturedData.proof.payload.hash || "Pending..."}
-                                </span>
-                            </div>
-                            <div className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800">
-                                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Liveness Delta</span>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[11px] font-mono font-medium text-slate-700 dark:text-slate-300">
-                                        Δ {capturedData.proof.payload.sensors.orientationDelta.toFixed(2)}
-                                    </span>
-                                    <span className="px-1.5 py-0.5 rounded text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-500/20 text-[9px] font-bold uppercase tracking-wide">Pass</span>
-                                </div>
+                            <div className="flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={handleReset}
+                                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+                                >
+                                    Clear All
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handlePostSelected}
+                                    disabled={!selectedCaptures.length}
+                                    className="rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-bold text-black transition-colors hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    Post Selected
+                                </button>
                             </div>
                         </div>
-                    </div>
-
-                    <div className="flex gap-3 w-full max-w-sm pt-2">
-                        <button
-                            onClick={handleReset}
-                            className="flex-1 py-3.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-semibold rounded-2xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-[0.98] text-sm tracking-wide"
-                        >
-                            RETAKE
-                        </button>
-                        <button
-                            onClick={() => setStep("describe")}
-                            className="flex-2 py-3.5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold rounded-2xl hover:bg-slate-800 dark:hover:bg-white transition-all shadow-md flex items-center justify-center gap-2 active:scale-[0.98] text-sm tracking-wide"
-                        >
-                            CONTINUE
-                        </button>
                     </div>
                 </div>
             )}
 
             {/* ── Step: Describe Your Moment ───────────── */}
-            {step === "describe" && capturedData && (
+            {step === "describe" && activeCapture && (
                 <div className="flex-1 flex flex-col items-center justify-start pt-24 px-6 pb-6 overflow-y-auto animate-in fade-in slide-in-from-right-4 duration-300">
                     <div className="w-full max-w-sm space-y-6">
                         <div>
@@ -342,15 +410,21 @@ export default function CapturePage() {
                                 Describe Moment
                             </h2>
                             <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                                Add context to your verified capture before archiving it permanently.
+                                Add context to your verified captures before
+                                archiving them permanently.
+                            </p>
+                            <p className="mt-2 text-xs font-semibold uppercase tracking-[0.25em] text-indigo-500">
+                                {selectedCaptures.length} image
+                                {selectedCaptures.length === 1 ? "" : "s"}{" "}
+                                selected
                             </p>
                         </div>
 
                         {/* Thumbnail preview */}
-                        {imageUrl && (
+                        {activeCapture && (
                             <div className="w-full aspect-video rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 relative shadow-sm">
                                 <Image
-                                    src={imageUrl}
+                                    src={activeCapture.imageUrl}
                                     alt="Preview"
                                     fill
                                     className="object-cover"
@@ -399,7 +473,8 @@ export default function CapturePage() {
                         {/* Pillar selector */}
                         <div>
                             <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
-                                Category <span className="text-indigo-500">*</span>
+                                Category{" "}
+                                <span className="text-indigo-500">*</span>
                             </label>
                             <div className="flex flex-wrap gap-2">
                                 {PILLARS.map((p) => {
@@ -435,9 +510,13 @@ export default function CapturePage() {
                                 <input
                                     type="text"
                                     value={locationName}
-                                    onChange={(e) => setLocationName(e.target.value)}
+                                    onChange={(e) =>
+                                        setLocationName(e.target.value)
+                                    }
                                     placeholder={
-                                        isGeocodingLocation ? "Detecting location..." : "Location name"
+                                        isGeocodingLocation
+                                            ? "Detecting location..."
+                                            : "Location name"
                                     }
                                     className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-11 pr-4 py-3.5 text-slate-900 dark:text-slate-100 text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all shadow-sm"
                                 />
@@ -450,7 +529,7 @@ export default function CapturePage() {
                         {/* Actions */}
                         <div className="flex gap-3 pt-6 pb-8">
                             <button
-                                onClick={() => setStep("preview")}
+                                onClick={() => setStep("camera")}
                                 className="flex-1 py-3.5 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-semibold rounded-2xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-[0.98] text-sm tracking-wide"
                             >
                                 BACK
@@ -502,38 +581,46 @@ export default function CapturePage() {
                         <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
                             Archived
                         </h2>
-                        <p className="text-slate-500 dark:text-slate-400 text-sm max-w-[260px] mx-auto leading-relaxed">
-                            Your verified human moment is now permanently stored on the decentralized web.
+                        <p className="text-slate-500 dark:text-slate-400 text-sm max-w-65 mx-auto leading-relaxed">
+                            {archiveResult.imageUrls.length} image
+                            {archiveResult.imageUrls.length === 1 ? "" : "s"}{" "}
+                            archived on the decentralized web.
                         </p>
                     </div>
 
                     <div className="w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[1.5rem] p-5 space-y-4 shadow-sm">
                         <div className="space-y-3">
                             <div className="flex justify-between items-center p-2">
-                                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">IPFS CID</span>
+                                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                    IPFS CID
+                                </span>
                                 <a
-                                    href={archiveResult.imageUrl}
+                                    href={archiveResult.imageUrls[0]}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-[11px] font-mono font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline truncate max-w-[160px] transition-colors"
+                                    className="text-[11px] font-mono font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline truncate max-w-40 transition-colors"
                                 >
-                                    {archiveResult.imageHash}
+                                    {archiveResult.imageHashes[0]}
                                 </a>
                             </div>
                             <div className="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800">
-                                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Proof Link</span>
+                                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                    Proof Link
+                                </span>
                                 <a
-                                    href={archiveResult.proofUrl}
+                                    href={archiveResult.proofUrls[0]}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-[11px] font-mono font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline truncate max-w-[160px] transition-colors flex items-center gap-1"
+                                    className="text-[11px] font-mono font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline truncate max-w-40 transition-colors flex items-center gap-1"
                                 >
                                     view_proof.json
                                     <ArrowUpRight className="w-3 h-3" />
                                 </a>
                             </div>
                             <div className="flex justify-between items-center p-2">
-                                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</span>
+                                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                    Status
+                                </span>
                                 <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/20 px-2 py-1 rounded border border-emerald-200 dark:border-emerald-500/30 uppercase tracking-widest">
                                     Permanent
                                 </span>
