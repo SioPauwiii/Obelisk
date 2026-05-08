@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { useAuth } from "@/hooks/useAuth";
+import { toastSuccess } from "@/utils/Toast";
 
 export default function DashboardLayoutWrapper({
     children,
@@ -17,6 +18,7 @@ export default function DashboardLayoutWrapper({
     const handleLogout = async () => {
         await logout();
         queryClient.clear();
+        toastSuccess("Logged out", "You have been successfully signed out.");
         router.replace("/signin");
     };
 
