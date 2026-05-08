@@ -15,6 +15,9 @@ import {
     ArrowRight,
     ArrowLeft,
     Loader2,
+    Check,
+    X,
+    AtSign,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────
@@ -83,8 +86,10 @@ export default function OnboardingPage() {
     const { user, isAuthenticated, isLoading } = useAuth();
 
     const [step, setStep] = useState(0);
-    const [firstName, setFirstName] = useState("");
-    const [lastName, setLastName] = useState("");
+    const [handle, setHandle] = useState("");
+    const [handleStatus, setHandleStatus] = useState<
+        "idle" | "checking" | "available" | "taken" | "invalid"
+    >("idle");
     const [country, setCountry] = useState("");
     const [pillars, setPillars] = useState<string[]>([]);
     const [saving, setSaving] = useState(false);
@@ -96,6 +101,36 @@ export default function OnboardingPage() {
         );
     };
 
+    // Handle validation regex (must match backend)
+    const HANDLE_REGEX = /^[a-z][a-z0-9_]{2,19}$/;
+
+    // Debounced handle availability check
+    useEffect(() => {
+        if (!handle || handle.length < 3) {
+            setHandleStatus(handle.length > 0 ? "invalid" : "idle");
+            return;
+        }
+        if (!HANDLE_REGEX.test(handle)) {
+            setHandleStatus("invalid");
+            return;
+        }
+
+        setHandleStatus("checking");
+        const timer = setTimeout(async () => {
+            try {
+                const res = await fetch(
+                    `/api/onboarding/check-handle?handle=${encodeURIComponent(handle)}`
+                );
+                const data = await res.json();
+                setHandleStatus(data.available ? "available" : "taken");
+            } catch {
+                setHandleStatus("idle");
+            }
+        }, 400);
+
+        return () => clearTimeout(timer);
+    }, [handle]);
+
     // Guard: redirect if not authenticated
     useEffect(() => {
         if (!isLoading && !isAuthenticated) {
@@ -105,7 +140,7 @@ export default function OnboardingPage() {
 
     // Guard: redirect if already onboarded
     useEffect(() => {
-        if (!isLoading && user?.full_name) {
+        if (!isLoading && user?.handle) {
             router.replace("/dashboard");
         }
     }, [isLoading, user, router]);
@@ -120,8 +155,7 @@ export default function OnboardingPage() {
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
                 body: JSON.stringify({
-                    firstName: firstName.trim(),
-                    lastName: lastName.trim(),
+                    handle,
                     country,
                     pillarPreference: pillars,
                 }),
@@ -154,8 +188,7 @@ export default function OnboardingPage() {
         );
     }
 
-    const canProceedStep0 =
-        firstName.trim().length >= 2 && lastName.trim().length >= 1;
+    const canProceedStep0 = handleStatus === "available";
     const canProceedStep1 = country.length > 0;
     const canFinish = pillars.length > 0;
 
@@ -202,45 +235,80 @@ export default function OnboardingPage() {
                             </p>
                         </div>
 
-                        {/* ── Step 0: Name ─────────────────── */}
+                        {/* ── Step 0: Handle ──────────────── */}
                         {step === 0 && (
                             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
                                 <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                                    Welcome to Obelisk
+                                    Choose your handle
                                 </h1>
                                 <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                                    Let&apos;s set up your archive identity.
-                                    What should we call you?
+                                    This is your unique identity in the Obelisk
+                                    archive. It can&apos;t be changed later.
                                 </p>
 
-                                <div className="mt-8 space-y-5">
-                                    <div>
-                                        <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                            First Name
-                                        </label>
+                                <div className="mt-8">
+                                    <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                        Handle
+                                    </label>
+                                    <div className="relative">
+                                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                                            <AtSign className="h-4 w-4 text-slate-400" />
+                                        </div>
                                         <input
                                             type="text"
-                                            value={firstName}
+                                            value={handle}
                                             onChange={(e) =>
-                                                setFirstName(e.target.value)
+                                                setHandle(
+                                                    e.target.value
+                                                        .toLowerCase()
+                                                        .replace(/[^a-z0-9_]/g, "")
+                                                )
                                             }
-                                            placeholder="Juan"
-                                            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-100 dark:placeholder:text-slate-600"
+                                            maxLength={20}
+                                            placeholder="rin"
+                                            className={`w-full rounded-lg border bg-white pl-10 pr-10 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 dark:bg-slate-900/50 dark:text-slate-100 dark:placeholder:text-slate-600 ${
+                                                handleStatus === "available"
+                                                    ? "border-emerald-400 focus:border-emerald-500 focus:ring-emerald-500/20"
+                                                    : handleStatus === "taken" ||
+                                                        handleStatus === "invalid"
+                                                      ? "border-red-400 focus:border-red-500 focus:ring-red-500/20"
+                                                      : "border-slate-300 focus:border-cyan-500 focus:ring-cyan-500/20 dark:border-slate-800"
+                                            }`}
                                         />
+                                        {/* Status icon */}
+                                        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                                            {handleStatus === "checking" && (
+                                                <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                                            )}
+                                            {handleStatus === "available" && (
+                                                <Check className="h-4 w-4 text-emerald-500" />
+                                            )}
+                                            {(handleStatus === "taken" ||
+                                                handleStatus === "invalid") && (
+                                                <X className="h-4 w-4 text-red-400" />
+                                            )}
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                            Last Name
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={lastName}
-                                            onChange={(e) =>
-                                                setLastName(e.target.value)
-                                            }
-                                            placeholder="Dela Cruz"
-                                            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-100 dark:placeholder:text-slate-600"
-                                        />
+                                    {/* Status message */}
+                                    <div className="mt-2 h-5">
+                                        {handleStatus === "available" && (
+                                            <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                                                @{handle} is available!
+                                            </p>
+                                        )}
+                                        {handleStatus === "taken" && (
+                                            <p className="text-xs text-red-500">
+                                                @{handle} is already taken
+                                            </p>
+                                        )}
+                                        {handleStatus === "invalid" &&
+                                            handle.length > 0 && (
+                                                <p className="text-xs text-red-500">
+                                                    3-20 chars, starts with a
+                                                    letter, lowercase +
+                                                    underscores only
+                                                </p>
+                                            )}
                                     </div>
                                 </div>
 
@@ -248,7 +316,7 @@ export default function OnboardingPage() {
                                     type="button"
                                     disabled={!canProceedStep0}
                                     onClick={() => setStep(1)}
-                                    className="mt-8 flex w-full items-center justify-center gap-2 rounded-lg bg-linear-to-r from-indigo-600 to-cyan-500 px-4 py-3 text-base font-semibold text-white shadow-lg shadow-cyan-500/20 transition-all hover:from-indigo-500 hover:to-cyan-400 hover:shadow-xl hover:shadow-cyan-500/30 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-slate-950"
+                                    className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-linear-to-r from-indigo-600 to-cyan-500 px-4 py-3 text-base font-semibold text-white shadow-lg shadow-cyan-500/20 transition-all hover:from-indigo-500 hover:to-cyan-400 hover:shadow-xl hover:shadow-cyan-500/30 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-slate-950"
                                 >
                                     Continue
                                     <ArrowRight className="h-4 w-4" />
