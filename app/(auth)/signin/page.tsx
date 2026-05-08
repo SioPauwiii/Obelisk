@@ -80,11 +80,12 @@ export default function LoginPage() {
                             {/* ─── Header ─────────────── */}
                             <div className="flex flex-col items-center gap-2 text-center">
                                 <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                                    Sign in with Privy
+                                    Sign in to Obelisk
                                 </h1>
                                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                                    Use your wallet to authenticate securely and
-                                    access your dashboard.
+                                    Choose your preferred sign-in method to
+                                    access your account and explore the Obelisk
+                                    archive.
                                 </p>
                             </div>
 
