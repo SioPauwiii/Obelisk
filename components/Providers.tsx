@@ -26,11 +26,13 @@ export function Providers({ children }: ProvidersProps) {
         <PrivyProvider
             appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? ""}
             config={{
-                loginMethods: ["wallet"],
+                loginMethods: ["wallet", "google", "email"],
                 embeddedWallets: { createOnLogin: "users-without-wallets" },
             }}
         >
-            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+            <QueryClientProvider client={queryClient}>
+                {children}
+            </QueryClientProvider>
         </PrivyProvider>
     );
 }
