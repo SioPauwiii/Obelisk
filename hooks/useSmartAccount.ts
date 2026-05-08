@@ -21,7 +21,7 @@ export const useSmartAccount = () => {
           chain: avalancheFuji,
           transport: http(process.env.NEXT_PUBLIC_AVALANCHE_FUJI_RPC_URL),
         });
-
+ 
         // Derive Safe Smart Account
         const safeAccount = await toSafeSmartAccount({
           client: publicClient,
