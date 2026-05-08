@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
         remotePatterns: [
             {
                 protocol: "https",
-                hostname: "gateway.lighthouse.storage",
+                hostname: "sensitive-mockingbird-6dww5.lighthouseweb3.xyz",
             },
         ],
     },
