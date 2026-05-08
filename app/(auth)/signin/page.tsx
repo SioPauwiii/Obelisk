@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useLoginWithOAuth } from "@privy-io/react-auth";
 import { usePrivyAuth } from "@/hooks/usePrivyAuth";
 import { LoginWithEmail } from "@/components/auth/LoginWithEmail";
+import { Wallet } from "lucide-react";
+import GoogleIcon from "@/public/googleicon";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -72,6 +74,7 @@ export default function LoginPage() {
                                     disabled={!ready}
                                     className="w-full rounded-lg bg-linear-to-r from-indigo-600 to-cyan-500 px-4 py-3 text-base font-semibold text-white shadow-lg shadow-cyan-500/20 transition-all hover:from-indigo-500 hover:to-cyan-400 hover:shadow-xl hover:shadow-cyan-500/30 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-slate-950"
                                 >
+                                    <Wallet className="inline h-5 w-5 mr-2 -ml-1 text-white" />
                                     Continue with Wallet
                                 </button>
 
@@ -83,6 +86,7 @@ export default function LoginPage() {
                                     disabled={!ready}
                                     className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base font-semibold text-slate-800 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus:ring-offset-slate-950"
                                 >
+                                    <GoogleIcon className="inline h-5 w-5 mr-2 -ml-1 text-white" />
                                     Continue with Google
                                 </button>
 
