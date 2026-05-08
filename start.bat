@@ -1,5 +1,5 @@
 @echo off
 
-npm run dev 
+npm run dev -- -p 5173
 
 exit
