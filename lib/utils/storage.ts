@@ -1,12 +1,38 @@
 import lighthouse from "@lighthouse-web3/sdk";
 
+type ProofPayload = {
+    payload: {
+        hash?: string;
+        [key: string]: unknown;
+    };
+    [key: string]: unknown;
+};
+
+type ArchiveInput = {
+    blob: Blob;
+    proof: ProofPayload;
+    label: string;
+};
+
+type ArchiveResult = {
+    hash: string;
+    url: string;
+};
+
+type ArchiveMomentsResult = {
+    imageHashes: string[];
+    proofHashes: string[];
+    imageUrls: string[];
+    proofUrls: string[];
+};
+
 /**
  * Uploads a blob to Lighthouse (Filecoin/IPFS).
  */
 export async function uploadToLighthouse(
     data: string | Blob | Buffer,
     name: string,
-): Promise<{ hash: string; url: string }> {
+): Promise<ArchiveResult> {
     const apiKey = process.env.NEXT_PUBLIC_LIGHTHOUSE_API_KEY;
     if (!apiKey) {
         throw new Error("Lighthouse API Key is not configured.");
@@ -39,45 +65,74 @@ export async function uploadToLighthouse(
 }
 
 /**
- * Bundles the image and its proof, archiving both to Lighthouse.
+ * Bundles a single image and its proof, archiving both to Lighthouse.
  */
 export async function archiveMoment(
     imageBlob: Blob,
-    proof: any,
+    proof: ProofPayload,
 ): Promise<{
     imageHash: string;
     proofHash: string;
     imageUrl: string;
     proofUrl: string;
 }> {
-    // 1. Upload the image first
-    const imageResult = await uploadToLighthouse(
-        imageBlob,
-        `image_${proof.payload.hash}.jpg`,
-    );
-
-    // 2. Attach the image IPFS hash to the proof for cross-referencing
-    const linkedProof = {
-        ...proof,
-        ipfs: {
-            imageHash: imageResult.hash,
-            imageUrl: imageResult.url,
-        },
-    };
-
-    // 3. Upload the linked proof JSON
-    const proofBlob = new Blob([JSON.stringify(linkedProof, null, 2)], {
-        type: "application/json",
-    });
-    const proofResult = await uploadToLighthouse(
-        proofBlob,
-        `proof_${proof.payload.hash}.json`,
-    );
+    const result = await archiveMoments([
+        { blob: imageBlob, proof, label: proof.payload.hash ?? "image_0" },
+    ]);
 
     return {
-        imageHash: imageResult.hash,
-        proofHash: proofResult.hash,
-        imageUrl: imageResult.url,
-        proofUrl: proofResult.url,
+        imageHash: result.imageHashes[0],
+        proofHash: result.proofHashes[0],
+        imageUrl: result.imageUrls[0],
+        proofUrl: result.proofUrls[0],
+    };
+}
+
+/**
+ * Bundles multiple images and their proofs, archiving each pair to Lighthouse.
+ */
+export async function archiveMoments(
+    captures: ArchiveInput[],
+): Promise<ArchiveMomentsResult> {
+    const imageHashes: string[] = [];
+    const proofHashes: string[] = [];
+    const imageUrls: string[] = [];
+    const proofUrls: string[] = [];
+
+    for (let index = 0; index < captures.length; index += 1) {
+        const capture = captures[index];
+        const imageResult = await uploadToLighthouse(
+            capture.blob,
+            `image_${capture.label}_${index}.jpg`,
+        );
+
+        const linkedProof = {
+            ...capture.proof,
+            ipfs: {
+                imageHash: imageResult.hash,
+                imageUrl: imageResult.url,
+                captureIndex: index,
+            },
+        };
+
+        const proofBlob = new Blob([JSON.stringify(linkedProof, null, 2)], {
+            type: "application/json",
+        });
+        const proofResult = await uploadToLighthouse(
+            proofBlob,
+            `proof_${capture.label}_${index}.json`,
+        );
+
+        imageHashes.push(imageResult.hash);
+        proofHashes.push(proofResult.hash);
+        imageUrls.push(imageResult.url);
+        proofUrls.push(proofResult.url);
+    }
+
+    return {
+        imageHashes,
+        proofHashes,
+        imageUrls,
+        proofUrls,
     };
 }

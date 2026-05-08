@@ -27,6 +27,10 @@ const createPostSchema = z.object({
     proofCid: z.string().min(1),
     imageUrl: z.string().url(),
     proofUrl: z.string().url(),
+    imageCids: z.array(z.string().min(1)).optional().default([]),
+    proofCids: z.array(z.string().min(1)).optional().default([]),
+    imageUrls: z.array(z.string().url()).optional().default([]),
+    proofUrls: z.array(z.string().url()).optional().default([]),
     livenessScore: z.number().optional().default(0),
     capturedAt: z.string().datetime(),
 });
@@ -77,6 +81,10 @@ export async function POST(req: NextRequest) {
 
         const d = parsed.data;
         const supabase = createAdminClient();
+        const imageCids = d.imageCids.length ? d.imageCids : [d.imageCid];
+        const proofCids = d.proofCids.length ? d.proofCids : [d.proofCid];
+        const imageUrls = d.imageUrls.length ? d.imageUrls : [d.imageUrl];
+        const proofUrls = d.proofUrls.length ? d.proofUrls : [d.proofUrl];
 
         const { data: post, error: insertError } = await supabase
             .from("posts")
@@ -88,10 +96,14 @@ export async function POST(req: NextRequest) {
                 location_name: d.locationName,
                 latitude: d.latitude,
                 longitude: d.longitude,
-                image_cid: d.imageCid,
-                proof_cid: d.proofCid,
-                image_url: d.imageUrl,
-                proof_url: d.proofUrl,
+                image_cid: imageCids[0],
+                proof_cid: proofCids[0],
+                image_url: imageUrls[0],
+                proof_url: proofUrls[0],
+                image_cids: imageCids,
+                proof_cids: proofCids,
+                image_urls: imageUrls,
+                proof_urls: proofUrls,
                 liveness_score: d.livenessScore,
                 captured_at: d.capturedAt,
             })
