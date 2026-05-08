@@ -3,12 +3,12 @@ import "./globals.css";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
     title: "Obelisk - Blockchain Humanity Archive",
     description:
-        "Obelisk is a blockchain-powered humanity archive that preserves identities, memories, achievements, moments, and digital legacies on-chain for future generations.",
+        "A blockchain-powered preservation protocol designed to safeguard humanity's identity, knowledge, history, and legacy for future generations. Built as a decentralized proof of personhood system, this system establishes verifiable human authenticity while creating a permanent, tamper-resistant archive of human existence, culture, and contribution.",
     keywords: [
         "Blockchain",
         "OneDev",
