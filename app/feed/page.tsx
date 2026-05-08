@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
@@ -113,18 +113,24 @@ function PostCard({ post }: { post: Post }) {
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const author = post.users;
-    const mediaUrls =
-        post.image_urls?.length && post.image_urls.length > 0
-            ? post.image_urls
-            : post.image_url
-              ? [post.image_url]
-              : [];
-    const proofUrls =
-        post.proof_urls?.length && post.proof_urls.length > 0
-            ? post.proof_urls
-            : post.proof_url
-              ? [post.proof_url]
-              : [];
+    const mediaUrls = useMemo(
+        () =>
+            post.image_urls?.length && post.image_urls.length > 0
+                ? post.image_urls
+                : post.image_url
+                  ? [post.image_url]
+                  : [],
+        [post.image_urls, post.image_url],
+    );
+    const proofUrls = useMemo(
+        () =>
+            post.proof_urls?.length && post.proof_urls.length > 0
+                ? post.proof_urls
+                : post.proof_url
+                  ? [post.proof_url]
+                  : [],
+        [post.proof_urls, post.proof_url],
+    );
     const pillarColor =
         PILLAR_COLORS[post.pillar] ??
         "bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
@@ -136,9 +142,7 @@ function PostCard({ post }: { post: Post }) {
         } else {
             console.log(`[Feed] Post ${post.id} image_urls:`, mediaUrls);
         }
-        setActiveImageIndex(0);
-        setImageError(false);
-    }, [post.id, mediaUrls.join("|")]);
+    }, [post.id, mediaUrls]);
 
     return (
         <article className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
@@ -505,7 +509,12 @@ export default function FeedPage() {
                         <EmptyState />
                     )
                 ) : (
-                    posts.map((post) => <PostCard key={post.id} post={post} />)
+                    posts.map((post) => (
+                        <PostCard
+                            key={`${post.id}:${post.image_cid}:${post.proof_cid}`}
+                            post={post}
+                        />
+                    ))
                 )}
             </div>
         </main>
