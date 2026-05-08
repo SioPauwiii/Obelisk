@@ -19,7 +19,7 @@ const onboardingSchema = z.object({
     firstName: z.string().min(2).max(50),
     lastName: z.string().min(1).max(50),
     country: z.string().min(1).max(100),
-    pillarPreference: z.string().min(1).max(50),
+    pillarPreference: z.array(z.string()).min(1),
 });
 
 export async function POST(req: NextRequest) {
@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
 
         const { firstName, lastName, country, pillarPreference } = parsed.data;
         const fullName = `${firstName} ${lastName}`.trim();
+        const pillarPreferenceStr = pillarPreference.join(",");
 
         // ── 3. Update user record ────────────────────
         const supabase = createAdminClient();
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
             .update({
                 full_name: fullName,
                 country,
-                pillar_preference: pillarPreference,
+                pillar_preference: pillarPreferenceStr,
                 updated_at: new Date().toISOString(),
             })
             .eq("id", userId)

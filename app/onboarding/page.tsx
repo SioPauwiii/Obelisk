@@ -86,9 +86,15 @@ export default function OnboardingPage() {
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
     const [country, setCountry] = useState("");
-    const [pillar, setPillar] = useState("");
+    const [pillars, setPillars] = useState<string[]>([]);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const togglePillar = (id: string) => {
+        setPillars((prev) =>
+            prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
+        );
+    };
 
     // Guard: redirect if not authenticated
     useEffect(() => {
@@ -117,7 +123,7 @@ export default function OnboardingPage() {
                     firstName: firstName.trim(),
                     lastName: lastName.trim(),
                     country,
-                    pillarPreference: pillar,
+                    pillarPreference: pillars,
                 }),
             });
 
@@ -139,7 +145,7 @@ export default function OnboardingPage() {
 
     if (isLoading || !isAuthenticated) {
         return (
-            <div className="grid min-h-svh place-items-center bg-slate-50 dark:bg-slate-950">
+            <div className="grid h-svh place-items-center bg-slate-50 dark:bg-slate-950">
                 <div className="flex flex-col items-center gap-4">
                     <Loader2 className="h-10 w-10 animate-spin text-indigo-600 dark:text-indigo-400" />
                     <p className="text-sm text-slate-500">Loading...</p>
@@ -151,12 +157,14 @@ export default function OnboardingPage() {
     const canProceedStep0 =
         firstName.trim().length >= 2 && lastName.trim().length >= 1;
     const canProceedStep1 = country.length > 0;
-    const canFinish = pillar.length > 0;
+    const canFinish = pillars.length > 0;
 
     return (
-        <div className="grid min-h-svh lg:grid-cols-2 bg-slate-50 dark:bg-slate-950 font-sans">
-            {/* ─── FORM SECTION ─────────────────────── */}
-            <div className="flex flex-col gap-4 p-6 md:p-10 relative overflow-y-auto">
+        // Changed min-h-svh to h-svh to lock the outer grid strictly to the viewport height
+        <div className="grid h-svh lg:grid-cols-2 bg-slate-50 dark:bg-slate-950 font-sans">
+            {/* ─── FORM SECTION (Scrollable) ─────────────── */}
+            {/* Added h-full and overflow-y-auto so ONLY this column scrolls */}
+            <div className="flex h-full flex-col gap-4 p-6 md:p-10 relative overflow-y-auto">
                 {/* Header Logo */}
                 <div className="flex justify-center gap-2 md:justify-start">
                     <div className="flex items-center gap-2 font-medium">
@@ -310,14 +318,14 @@ export default function OnboardingPage() {
 
                                 <div className="mt-8 space-y-3">
                                     {PILLARS.map((p) => {
-                                        const isSelected = pillar === p.id;
+                                        const isSelected = pillars.includes(p.id);
                                         const Icon = p.icon;
 
                                         return (
                                             <button
                                                 key={p.id}
                                                 type="button"
-                                                onClick={() => setPillar(p.id)}
+                                                onClick={() => togglePillar(p.id)}
                                                 className={`flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-all ${
                                                     isSelected
                                                         ? "border-cyan-500 bg-cyan-50 ring-1 ring-cyan-500 dark:bg-cyan-500/10"
@@ -389,8 +397,9 @@ export default function OnboardingPage() {
                 </div>
             </div>
 
-            {/* ─── VISUAL SECTION (Matches Login) ─────────── */}
-            <div className="relative hidden lg:flex items-center justify-center bg-[#0d1128] overflow-hidden min-h-screen">
+            {/* ─── VISUAL SECTION (Fixed) ─────────── */}
+            {/* Changed min-h-screen to h-full so it perfectly fills the locked parent grid height */}
+            <div className="relative hidden lg:flex h-full items-center justify-center bg-[#0d1128] overflow-hidden">
                 {/* 1. Ambient background glows */}
                 <div className="absolute top-1/4 left-1/4 w-100 h-100 bg-cyan-500/20 blur-[120px] rounded-full pointer-events-none" />
                 <div className="absolute bottom-1/4 right-1/4 w-112.5 h-112.5 bg-indigo-600/30 blur-[120px] rounded-full pointer-events-none" />
@@ -421,7 +430,7 @@ export default function OnboardingPage() {
                             of human history.&rdquo;
                         </p>
                         <footer className="text-sm font-semibold text-cyan-400/80 tracking-wide uppercase">
-                            — Obelisk Initiative
+                            — OneDev PH
                         </footer>
                     </blockquote>
                 </div>
