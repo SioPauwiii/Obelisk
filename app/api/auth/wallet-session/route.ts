@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
                 .eq("id", existingUser.id)
                 .select("*")
                 .single();
-                
+
             dbUser = updatedUser || existingUser;
         } else {
             // Insert new user
