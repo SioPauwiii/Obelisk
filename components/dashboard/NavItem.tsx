@@ -28,12 +28,12 @@ export function NavItem({
                 size={22}
                 strokeWidth={isActive ? 2.2 : 1.8}
                 className={`transition-colors duration-200 ${
-                    isActive ? "text-blue-500" : "text-slate-400"
+                    isActive ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400"
                 }`}
             />
             <span
                 className={`text-[10px] font-medium tracking-wide transition-colors duration-200 ${
-                    isActive ? "text-blue-500" : "text-slate-400"
+                    isActive ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400"
                 }`}
             >
                 {label}

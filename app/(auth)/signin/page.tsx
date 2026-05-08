@@ -19,13 +19,13 @@ export default function LoginPage() {
     const { initOAuth } = useLoginWithOAuth();
     const [activeMethod, setActiveMethod] = useState<string | null>(null);
 
-    // Redirect once authenticated: onboarding for new users, dashboard for returning
+    // Redirect once authenticated: onboarding for new users, feed for returning
     useEffect(() => {
         if (isAuthenticated && !isLoading && user) {
             if (!user.handle) {
                 router.replace("/onboarding");
             } else {
-                router.replace("/dashboard");
+                router.replace("/feed");
             }
         }
     }, [isAuthenticated, isLoading, user, router]);
