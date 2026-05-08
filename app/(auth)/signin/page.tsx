@@ -20,7 +20,7 @@ export default function LoginPage() {
     // Redirect once authenticated: onboarding for new users, dashboard for returning
     useEffect(() => {
         if (isAuthenticated && !isLoading && user) {
-            if (!user.full_name) {
+            if (!user.handle) {
                 router.replace("/onboarding");
             } else {
                 router.replace("/dashboard");
