@@ -12,17 +12,21 @@ import GoogleIcon from "@/public/googleicon";
 
 export default function LoginPage() {
     const router = useRouter();
-    const { login, isAuthenticated, isLoading, authError, clearError } =
+    const { login, user, isAuthenticated, isLoading, authError, clearError } =
         useAuth();
     const { initOAuth } = useLoginWithOAuth();
     const [activeMethod, setActiveMethod] = useState<string | null>(null);
 
-    // Redirect once fully authenticated (Privy + Supabase session ready)
+    // Redirect once authenticated: onboarding for new users, dashboard for returning
     useEffect(() => {
-        if (isAuthenticated && !isLoading) {
-            router.replace("/dashboard");
+        if (isAuthenticated && !isLoading && user) {
+            if (!user.full_name) {
+                router.replace("/onboarding");
+            } else {
+                router.replace("/dashboard");
+            }
         }
-    }, [isAuthenticated, isLoading, router]);
+    }, [isAuthenticated, isLoading, user, router]);
 
     const handleWalletLogin = () => {
         clearError();

@@ -199,6 +199,7 @@ export async function POST(req: NextRequest) {
             sub: dbUser.id,
             role: "authenticated",
             wallet_address: walletAddress,
+            onboarded: !!dbUser.full_name,
             aud: "authenticated",
             iss: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1`,
         })
