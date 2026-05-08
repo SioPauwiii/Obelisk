@@ -18,6 +18,7 @@ export function createBrowserClient(): SupabaseClient {
     }
 
     browserClient = createClient(url, anonKey, {
+        db: { schema: "public" },
         auth: {
             persistSession: false,
             autoRefreshToken: false,
@@ -42,6 +43,7 @@ export function createAdminClient(): SupabaseClient {
     }
 
     return createClient(url, serviceRoleKey, {
+        db: { schema: "public" },
         auth: {
             autoRefreshToken: false,
             persistSession: false,

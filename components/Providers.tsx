@@ -27,7 +27,9 @@ export function Providers({ children }: ProvidersProps) {
             appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID ?? ""}
             config={{
                 loginMethods: ["wallet", "google", "email"],
-                embeddedWallets: { createOnLogin: "users-without-wallets" },
+                embeddedWallets: {
+                    ethereum: { createOnLogin: "users-without-wallets" },
+                },
             }}
         >
             <QueryClientProvider client={queryClient}>
