@@ -9,12 +9,8 @@ import { LoginWithEmail } from "@/components/auth/LoginWithEmail";
 import { Wallet } from "lucide-react";
 import { MatrixRain } from "@/components/UI/MatrixRain";
 import GoogleIcon from "@/public/googleicon";
-import {
-    toastSuccess,
-    toastError,
-    toastInfo,
-    toastWarning,
-} from "@/utils/Toast";
+import { toastError } from "@/utils/Toast";
+import Link from "next/link";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -167,10 +163,25 @@ export default function LoginPage() {
                             </div>
 
                             {/* ─── Footer ──────────────── */}
-                            <p className="text-center text-xs text-slate-400 dark:text-slate-500 leading-relaxed mt-4">
-                                By connecting, you agree to our Terms of Service
-                                and Privacy Policy.
-                            </p>
+                            <div className="flex flex-wrap items-center gap-1 text-xs text-slate-400 dark:text-slate-500 leading-relaxed mt-4">
+                                <p>By connecting, you agree to our</p>
+
+                                <Link
+                                    href="/terms-of-service"
+                                    className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
+                                >
+                                    Terms of Service
+                                </Link>
+
+                                <p>and</p>
+
+                                <Link
+                                    href="/privacy-policy"
+                                    className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
+                                >
+                                    Privacy Policy
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </div>

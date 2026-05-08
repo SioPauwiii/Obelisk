@@ -21,6 +21,9 @@ const ONBOARDING_ROUTES = ["/onboarding"];
 // Routes that authenticated users should be redirected away from
 const AUTH_ROUTES = ["/signin"];
 
+// Routes that should always be publicly accessible
+const PUBLIC_ROUTES = ["/terms-of-service", "/privacy-policy"];
+
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
     try {
         const parts = token.split(".");
@@ -45,6 +48,11 @@ export function proxy(req: NextRequest) {
     const payload = token ? decodeJwtPayload(token) : null;
     const isAuthenticated = payload && !isExpired(payload);
     const isOnboarded = isAuthenticated && payload?.onboarded === true;
+
+    // ── 0. Public routes: always allow access ──
+    if (PUBLIC_ROUTES.some((r) => pathname.startsWith(r))) {
+        return NextResponse.next();
+    }
 
     // ── 1. Auth routes (signin): redirect away if logged in ──
     if (AUTH_ROUTES.some((r) => pathname.startsWith(r))) {
@@ -110,5 +118,7 @@ export const config = {
         "/dashboard/:path*",
         "/capture",
         "/capture/:path*",
+        "/terms-of-service",
+        "/privacy-policy",
     ],
 };
