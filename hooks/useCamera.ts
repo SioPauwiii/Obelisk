@@ -67,6 +67,27 @@ export const useCamera = () => {
     } | null>(null);
     const maxDelta = useRef<number>(0);
 
+    const handleOrientation = (event: DeviceOrientationEvent) => {
+        if (!initialOrientation.current) {
+            initialOrientation.current = {
+                alpha: event.alpha || 0,
+                beta: event.beta || 0,
+                gamma: event.gamma || 0,
+            };
+            return;
+        }
+
+        const delta =
+            Math.abs((event.alpha || 0) - initialOrientation.current.alpha) +
+            Math.abs((event.beta || 0) - initialOrientation.current.beta) +
+            Math.abs((event.gamma || 0) - initialOrientation.current.gamma);
+
+        if (delta > maxDelta.current) {
+            maxDelta.current = delta;
+            setLivenessScore(maxDelta.current);
+        }
+    };
+
     const syncCaptureLimitState = useCallback(() => {
         const now = Date.now();
         const history = getValidCaptureHistory(now);
@@ -182,27 +203,6 @@ export const useCamera = () => {
         }
         window.removeEventListener("deviceorientation", handleOrientation);
     }, [stream]);
-
-    const handleOrientation = (event: DeviceOrientationEvent) => {
-        if (!initialOrientation.current) {
-            initialOrientation.current = {
-                alpha: event.alpha || 0,
-                beta: event.beta || 0,
-                gamma: event.gamma || 0,
-            };
-            return;
-        }
-
-        const delta =
-            Math.abs((event.alpha || 0) - initialOrientation.current.alpha) +
-            Math.abs((event.beta || 0) - initialOrientation.current.beta) +
-            Math.abs((event.gamma || 0) - initialOrientation.current.gamma);
-
-        if (delta > maxDelta.current) {
-            maxDelta.current = delta;
-            setLivenessScore(maxDelta.current);
-        }
-    };
 
     const getGeolocation = (): Promise<GeolocationPosition | null> => {
         return new Promise((resolve) => {
