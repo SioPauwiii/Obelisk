@@ -347,9 +347,9 @@ export default function FeedPage() {
     const posts = data?.posts ?? [];
 
     return (
-        <main className="flex-1 overflow-y-auto pb-20 pt-16">
+        <main className="flex-1 overflow-y-auto pb-20 mt-16">
             {/* Pillar Filter Tabs */}
-            <div className="sticky top-16 z-10 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+            <div className="sticky top-0 z-30 w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
                 <div className="flex overflow-x-auto no-scrollbar">
                     {PILLAR_FILTERS.map((f) => {
                         const Icon = f.icon;

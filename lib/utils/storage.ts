@@ -29,7 +29,7 @@ export async function uploadToLighthouse(
 
         // Response structure: { data: { Name, Hash, Size } }
         const hash = response.data.Hash;
-        const url = `https://gateway.lighthouse.storage/ipfs/${hash}`;
+        const url = `https://sensitive-mockingbird-6dww5.lighthouseweb3.xyz/ipfs/${hash}`;
 
         return { hash, url };
     } catch (error) {
