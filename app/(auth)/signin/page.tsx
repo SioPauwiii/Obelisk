@@ -23,7 +23,7 @@ export default function LoginPage() {
     // Redirect once authenticated
     useEffect(() => {
         if (isAuthenticated && !isLoading) {
-            router.push("/");
+            router.push("/dashboard");
         }
     }, [isAuthenticated, isLoading, router]);
 
