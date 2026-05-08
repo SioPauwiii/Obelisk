@@ -7,6 +7,7 @@ import Link from "next/link";
 import {
     Camera,
     Globe,
+    Search,
     MapPin,
     ShieldCheck,
     Database,
@@ -18,6 +19,7 @@ import {
     ChevronUp,
     Dna,
     BookOpen,
+    X,
     Palette,
     Rocket,
     HeartHandshake,
@@ -395,17 +397,44 @@ function EmptyState() {
     );
 }
 
+function NoSearchResults({ query }: { query: string }) {
+    return (
+        <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+            <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-6">
+                <Search className="w-10 h-10 text-slate-400 dark:text-slate-500" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                No matching posts found
+            </h3>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 max-w-md">
+                Nothing matched &quot;{query}&quot;. Try title, handle, IPFS
+                CID, location, or transaction hash.
+            </p>
+        </div>
+    );
+}
+
 // ─────────────────────────────────────────────────────
 // Feed Page
 // ─────────────────────────────────────────────────────
 export default function FeedPage() {
     const [activeFilter, setActiveFilter] = useState("all");
+    const [searchInput, setSearchInput] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            setDebouncedSearch(searchInput.trim());
+        }, 250);
+        return () => window.clearTimeout(timer);
+    }, [searchInput]);
 
     const { data, isLoading } = useQuery({
-        queryKey: ["feed", activeFilter],
+        queryKey: ["feed", activeFilter, debouncedSearch],
         queryFn: async () => {
             const params = new URLSearchParams();
             if (activeFilter !== "all") params.set("pillar", activeFilter);
+            if (debouncedSearch) params.set("q", debouncedSearch);
             const res = await fetch(`/api/posts?${params.toString()}`);
             if (!res.ok) throw new Error("Failed to fetch feed");
             return res.json() as Promise<{ posts: Post[]; hasMore: boolean }>;
@@ -418,6 +447,30 @@ export default function FeedPage() {
         <main className="flex-1 overflow-y-auto pb-20 mt-16">
             {/* Pillar Filter Tabs */}
             <div className="sticky top-0 z-30 w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+                <div className="px-4 md:px-6 py-3 border-b border-slate-200/80 dark:border-slate-800/80">
+                    <div className="mx-auto max-w-2xl">
+                        <label className="relative block">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            <input
+                                type="text"
+                                value={searchInput}
+                                onChange={(e) => setSearchInput(e.target.value)}
+                                placeholder="Search title, @handle, IPFS CID, tx hash..."
+                                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 py-2.5 pl-9 pr-10 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                            />
+                            {searchInput && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearchInput("")}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                                    aria-label="Clear search"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            )}
+                        </label>
+                    </div>
+                </div>
                 <div className="flex overflow-x-auto no-scrollbar">
                     {PILLAR_FILTERS.map((f) => {
                         const Icon = f.icon;
@@ -450,7 +503,11 @@ export default function FeedPage() {
                         <PostSkeleton />
                     </>
                 ) : posts.length === 0 ? (
-                    <EmptyState />
+                    debouncedSearch ? (
+                        <NoSearchResults query={debouncedSearch} />
+                    ) : (
+                        <EmptyState />
+                    )
                 ) : (
                     posts.map((post) => <PostCard key={post.id} post={post} />)
                 )}

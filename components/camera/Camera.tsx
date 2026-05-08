@@ -11,6 +11,7 @@ import {
     ArrowUpRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface CameraProps {
     // Proof shape expected by the app
@@ -354,10 +355,12 @@ export const Camera: React.FC<CameraProps> = ({
                                 >
                                     {capturedImageUrl ? (
                                         <>
-                                            <img
+                                            <Image
                                                 src={capturedImageUrl}
                                                 alt="Captured thumbnail"
                                                 className="h-full w-full object-cover"
+                                                width={64}
+                                                height={64}
                                             />
                                             <div className="absolute inset-0 bg-linear-to-t from-black/45 via-transparent to-transparent" />
                                             <div className="absolute bottom-1.5 right-1.5 rounded-full bg-white/90 p-1">
