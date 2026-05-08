@@ -1,0 +1,134 @@
+import { NextRequest, NextResponse } from "next/server";
+import { SignJWT } from "jose";
+import { createAdminClient } from "@/lib/supabase";
+import { z } from "zod";
+
+// ─────────────────────────────────────────────────────
+// POST /api/onboarding
+//
+// Saves onboarding profile data for the authenticated user.
+// Re-mints the sb-access-token cookie with onboarded=true
+// so the Edge middleware grants access to protected routes.
+// ─────────────────────────────────────────────────────
+
+const onboardingSchema = z.object({
+    firstName: z.string().min(2).max(50),
+    lastName: z.string().min(1).max(50),
+    country: z.string().min(1).max(100),
+    pillarPreference: z.array(z.string()).min(1),
+});
+
+export async function POST(req: NextRequest) {
+    try {
+        // ── 1. Get user identity from cookie ─────────
+        const accessToken = req.cookies.get("sb-access-token")?.value;
+        if (!accessToken) {
+            return NextResponse.json(
+                { error: "Not authenticated" },
+                { status: 401 },
+            );
+        }
+
+        let userId: string;
+        let oldClaims: Record<string, unknown>;
+        try {
+            const payload = JSON.parse(
+                Buffer.from(accessToken.split(".")[1], "base64").toString(),
+            );
+            userId = payload.sub;
+            oldClaims = payload;
+            if (!userId) throw new Error("No sub in token");
+        } catch {
+            return NextResponse.json(
+                { error: "Invalid session" },
+                { status: 401 },
+            );
+        }
+
+        // ── 2. Validate request body ─────────────────
+        const body = await req.json().catch(() => null);
+        const parsed = onboardingSchema.safeParse(body);
+
+        if (!parsed.success) {
+            return NextResponse.json(
+                {
+                    error: "Invalid input",
+                    details: parsed.error.flatten().fieldErrors,
+                },
+                { status: 400 },
+            );
+        }
+
+        const { firstName, lastName, country, pillarPreference } = parsed.data;
+        const fullName = `${firstName} ${lastName}`.trim();
+        const pillarPreferenceStr = pillarPreference.join(",");
+
+        // ── 3. Update user record ────────────────────
+        const supabase = createAdminClient();
+
+        const { data: updatedUser, error: updateError } = await supabase
+            .from("users")
+            .update({
+                full_name: fullName,
+                country,
+                pillar_preference: pillarPreferenceStr,
+                updated_at: new Date().toISOString(),
+            })
+            .eq("id", userId)
+            .select(
+                "id, privy_did, email, full_name, avatar_url, wallet_address, auth_provider, is_verified_human, humanity_score, country, pillar_preference, voucher_count, created_at, updated_at",
+            )
+            .single();
+
+        if (updateError || !updatedUser) {
+            console.error("Onboarding update failed:", updateError);
+            return NextResponse.json(
+                { error: "Failed to save profile" },
+                { status: 500 },
+            );
+        }
+
+        // ── 4. Re-mint JWT with onboarded=true ───────
+        const jwtSecret = process.env.SUPABASE_JWT_SECRET;
+        if (!jwtSecret) {
+            // Onboarding saved but cookie not refreshed — user will
+            // get the updated cookie on next login. Not fatal.
+            return NextResponse.json({ success: true, user: updatedUser });
+        }
+
+        const secret = new TextEncoder().encode(jwtSecret);
+        const newJwt = await new SignJWT({
+            sub: updatedUser.id,
+            role: "authenticated",
+            wallet_address: oldClaims.wallet_address ?? null,
+            onboarded: true,
+            aud: "authenticated",
+            iss: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1`,
+        })
+            .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+            .setIssuedAt()
+            .setExpirationTime("1h")
+            .sign(secret);
+
+        const response = NextResponse.json({
+            success: true,
+            user: updatedUser,
+        });
+
+        response.cookies.set("sb-access-token", newJwt, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: 60 * 60,
+        });
+
+        return response;
+    } catch (error) {
+        console.error("Onboarding error:", error);
+        return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 },
+        );
+    }
+}

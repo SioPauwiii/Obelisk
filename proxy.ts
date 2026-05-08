@@ -1,78 +1,114 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { jwtVerify } from "jose";
+import { NextRequest, NextResponse } from "next/server";
 
 // ─────────────────────────────────────────────────────
-// Session Guard Proxy (Next.js 16)
+// Edge Middleware — Route Guarding
 //
-// In Next.js 16, `middleware.ts` has been renamed to `proxy.ts`
-// and the exported function must be named `proxy`.
+// Runs at the Edge BEFORE any page renders.
+// Uses the `sb-access-token` cookie (httpOnly JWT) set
+// by /api/auth/wallet-session to determine auth state.
 //
-// Protects all app routes except public paths.
-// Checks for a valid Supabase JWT in the sb-access-token cookie.
+// JWT payload includes:
+//   sub          — Supabase user id
+//   onboarded    — boolean (full_name is set)
 // ─────────────────────────────────────────────────────
 
-// Routes that don't require authentication
-const PUBLIC_PATHS = ["/signin", "/signup", "/login"];
+// Routes that require authentication + completed onboarding
+const PROTECTED_ROUTES = ["/dashboard", "/capture"];
 
-function isPublicPath(pathname: string): boolean {
-    return PUBLIC_PATHS.some(
-        (p) => pathname === p || pathname.startsWith(p + "/")
-    );
+// Routes that require authentication but NOT onboarding
+const ONBOARDING_ROUTES = ["/onboarding"];
+
+// Routes that authenticated users should be redirected away from
+const AUTH_ROUTES = ["/signin"];
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+    try {
+        const parts = token.split(".");
+        if (parts.length !== 3) return null;
+        const payload = JSON.parse(atob(parts[1]));
+        return payload;
+    } catch {
+        return null;
+    }
 }
 
-export async function proxy(request: NextRequest) {
-    const { pathname } = request.nextUrl;
+function isExpired(payload: Record<string, unknown>): boolean {
+    const exp = payload.exp;
+    if (typeof exp !== "number") return true;
+    return Date.now() >= exp * 1000;
+}
 
-    // Allow public pages (login, signup)
-    if (isPublicPath(pathname)) {
+export function proxy(req: NextRequest) {
+    const { pathname } = req.nextUrl;
+
+    const token = req.cookies.get("sb-access-token")?.value;
+    const payload = token ? decodeJwtPayload(token) : null;
+    const isAuthenticated = payload && !isExpired(payload);
+    const isOnboarded = isAuthenticated && payload?.onboarded === true;
+
+    // ── 1. Auth routes (signin): redirect away if logged in ──
+    if (AUTH_ROUTES.some((r) => pathname.startsWith(r))) {
+        if (isAuthenticated) {
+            const dest = isOnboarded ? "/dashboard" : "/onboarding";
+            return NextResponse.redirect(new URL(dest, req.url));
+        }
         return NextResponse.next();
     }
 
-    // ── Check for valid session cookie ───────────────
-    const token = request.cookies.get("sb-access-token")?.value;
-
-    if (!token) {
-        return NextResponse.redirect(new URL("/signin", request.url));
-    }
-
-    // Verify JWT
-    const jwtSecret = process.env.SUPABASE_JWT_SECRET;
-    if (!jwtSecret) {
-        // If secret is not configured, allow through in dev
-        console.warn("SUPABASE_JWT_SECRET not set — skipping session check");
+    // ── 2. Onboarding route: require auth, redirect if already done ──
+    if (ONBOARDING_ROUTES.some((r) => pathname.startsWith(r))) {
+        if (!isAuthenticated) {
+            return NextResponse.redirect(new URL("/signin", req.url));
+        }
+        if (isOnboarded) {
+            return NextResponse.redirect(new URL("/dashboard", req.url));
+        }
         return NextResponse.next();
     }
 
-    try {
-        const secret = new TextEncoder().encode(jwtSecret);
-        await jwtVerify(token, secret);
+    // ── 3. Protected routes: require auth + onboarding ──
+    if (PROTECTED_ROUTES.some((r) => pathname.startsWith(r))) {
+        if (!isAuthenticated) {
+            return NextResponse.redirect(new URL("/signin", req.url));
+        }
+        if (!isOnboarded) {
+            return NextResponse.redirect(new URL("/onboarding", req.url));
+        }
         return NextResponse.next();
-    } catch {
-        // Token is invalid or expired — redirect to login
-        const response = NextResponse.redirect(
-            new URL("/signin", request.url)
-        );
-        // Clear the invalid cookie
-        response.cookies.set("sb-access-token", "", {
-            httpOnly: true,
-            path: "/",
-            maxAge: 0,
-        });
-        return response;
     }
+
+    // ── 4. Root / — redirect based on state ──
+    if (pathname === "/") {
+        if (!isAuthenticated) {
+            return NextResponse.redirect(new URL("/signin", req.url));
+        }
+        if (!isOnboarded) {
+            return NextResponse.redirect(new URL("/onboarding", req.url));
+        }
+        return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+
+    return NextResponse.next();
 }
 
 export const config = {
     matcher: [
         /*
-         * Match all request paths except:
-         * - api (API routes)
-         * - _next/static (static files)
-         * - _next/image (image optimization files)
-         * - favicon.ico, sitemap.xml, robots.txt (metadata files)
-         * - Public assets (images, manifest, etc.)
+         * Only run middleware on specific app routes.
+         * Explicitly EXCLUDE:
+         *   - /api/*          (API routes handle their own auth)
+         *   - /_next/*        (Next.js internals, static/image)
+         *   - /favicon.ico    (browser favicon)
+         *   - Static files    (anything with a file extension like .png, .js, .css)
          */
-        "/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|manifest.webmanifest|.*\\.png$|.*\\.svg$|.*\\.jpg$|.*\\.webp$).*)",
+        "/",
+        "/signin",
+        "/signin/:path*",
+        "/onboarding",
+        "/onboarding/:path*",
+        "/dashboard",
+        "/dashboard/:path*",
+        "/capture",
+        "/capture/:path*",
     ],
 };
