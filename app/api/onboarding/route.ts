@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrivyClient } from "@privy-io/node";
+import { SignJWT } from "jose";
 import { createAdminClient } from "@/lib/supabase";
 import { z } from "zod";
 
@@ -7,13 +7,9 @@ import { z } from "zod";
 // POST /api/onboarding
 //
 // Saves onboarding profile data for the authenticated user.
-// Requires the sb-access-token cookie (set by wallet-session).
+// Re-mints the sb-access-token cookie with onboarded=true
+// so the Edge middleware grants access to protected routes.
 // ─────────────────────────────────────────────────────
-
-const privy = new PrivyClient({
-    appId: process.env.NEXT_PUBLIC_PRIVY_APP_ID!,
-    appSecret: process.env.PRIVY_APP_SECRET!,
-});
 
 const onboardingSchema = z.object({
     firstName: z.string().min(2).max(50),
@@ -29,23 +25,23 @@ export async function POST(req: NextRequest) {
         if (!accessToken) {
             return NextResponse.json(
                 { error: "Not authenticated" },
-                { status: 401 }
+                { status: 401 },
             );
         }
 
-        // Decode the JWT to get the sub (user id) — we minted this ourselves
-        // so we trust its structure after cookie validation
         let userId: string;
+        let oldClaims: Record<string, unknown>;
         try {
             const payload = JSON.parse(
-                Buffer.from(accessToken.split(".")[1], "base64").toString()
+                Buffer.from(accessToken.split(".")[1], "base64").toString(),
             );
             userId = payload.sub;
+            oldClaims = payload;
             if (!userId) throw new Error("No sub in token");
         } catch {
             return NextResponse.json(
                 { error: "Invalid session" },
-                { status: 401 }
+                { status: 401 },
             );
         }
 
@@ -59,7 +55,7 @@ export async function POST(req: NextRequest) {
                     error: "Invalid input",
                     details: parsed.error.flatten().fieldErrors,
                 },
-                { status: 400 }
+                { status: 400 },
             );
         }
 
@@ -80,7 +76,7 @@ export async function POST(req: NextRequest) {
             })
             .eq("id", userId)
             .select(
-                "id, privy_did, email, full_name, avatar_url, wallet_address, auth_provider, is_verified_human, humanity_score, country, pillar_preference, voucher_count, created_at, updated_at"
+                "id, privy_did, email, full_name, avatar_url, wallet_address, auth_provider, is_verified_human, humanity_score, country, pillar_preference, voucher_count, created_at, updated_at",
             )
             .single();
 
@@ -88,19 +84,51 @@ export async function POST(req: NextRequest) {
             console.error("Onboarding update failed:", updateError);
             return NextResponse.json(
                 { error: "Failed to save profile" },
-                { status: 500 }
+                { status: 500 },
             );
         }
 
-        return NextResponse.json({
+        // ── 4. Re-mint JWT with onboarded=true ───────
+        const jwtSecret = process.env.SUPABASE_JWT_SECRET;
+        if (!jwtSecret) {
+            // Onboarding saved but cookie not refreshed — user will
+            // get the updated cookie on next login. Not fatal.
+            return NextResponse.json({ success: true, user: updatedUser });
+        }
+
+        const secret = new TextEncoder().encode(jwtSecret);
+        const newJwt = await new SignJWT({
+            sub: updatedUser.id,
+            role: "authenticated",
+            wallet_address: oldClaims.wallet_address ?? null,
+            onboarded: true,
+            aud: "authenticated",
+            iss: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1`,
+        })
+            .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+            .setIssuedAt()
+            .setExpirationTime("1h")
+            .sign(secret);
+
+        const response = NextResponse.json({
             success: true,
             user: updatedUser,
         });
+
+        response.cookies.set("sb-access-token", newJwt, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: 60 * 60,
+        });
+
+        return response;
     } catch (error) {
         console.error("Onboarding error:", error);
         return NextResponse.json(
             { error: "Internal server error" },
-            { status: 500 }
+            { status: 500 },
         );
     }
 }
