@@ -1,0 +1,82 @@
+{
+    "name": "Obelisk",
+    "short_name": "Obelisk",
+    "description": "Obelisk is a blockchain-powered humanity archive that preserves identities, memories, achievements, moments, and digital legacies on-chain for future generations..",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#ffffff",
+    "theme_color": "#000000",
+    "dir": "ltr",
+    "lang": "en",
+    "categories": [
+        "Blockchain",
+        "OneDev",
+        "humanity archive",
+        "identity preservation",
+        "digital legacy",
+        "memories",
+        "achievements",
+        "moments",
+        "hackathon",
+        "web3",
+        "decentralized storage",
+        "NFT",
+        "ethereum",
+        "solana",
+        "ipfs"
+    ],
+    "icons": [
+        {
+            "src": "/icons/icon-72x72.png",
+            "sizes": "72x72",
+            "type": "image/png"
+        },
+        {
+            "src": "/icons/icon-80x80.png",
+            "sizes": "80x80",
+            "type": "image/png"
+        },
+        {
+            "src": "/icons/icon-128x128.png",
+            "sizes": "128x128",
+            "type": "image/png"
+        },
+        {
+            "src": "/icons/icon-144x144.png",
+            "sizes": "144x144",
+            "type": "image/png"
+        },
+        {
+            "src": "/icons/icon-152x152.png",
+            "sizes": "152x152",
+            "type": "image/png"
+        },
+        {
+            "src": "/icons/icon-256x256.png",
+            "sizes": "256x256",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icons/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "/icons/icon-1024x1024.png",
+            "sizes": "1024x1024",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+
+    "related_applications": [
+        {
+            "platform": "webapp",
+            "url": "https://onedevph.online"
+        }
+    ],
+    "prefer_related_applications": false
+}
