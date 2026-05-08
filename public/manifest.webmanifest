@@ -1,7 +1,7 @@
 {
     "name": "Obelisk",
     "short_name": "Obelisk",
-    "description": "Obelisk is a blockchain-powered humanity archive that preserves identities, memories, achievements, moments, and digital legacies on-chain for future generations..",
+    "description": "A blockchain-powered preservation protocol designed to safeguard humanity's identity, knowledge, history, and legacy for future generations. Built as a decentralized proof of personhood system, this system establishes verifiable human authenticity while creating a permanent, tamper-resistant archive of human existence, culture, and contribution.",
     "start_url": "/",
     "scope": "/",
     "display": "standalone",
