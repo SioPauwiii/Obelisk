@@ -347,10 +347,10 @@ export default function FeedPage() {
     const posts = data?.posts ?? [];
 
     return (
-        <main className="flex-1 overflow-y-auto pb-20 pt-16">
+        <main className="flex-1 overflow-y-auto pb-20 mt-16">
             {/* Pillar Filter Tabs */}
-            <div className="sticky top-16 z-10 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-                <div className="flex overflow-x-auto no-scrollbar">
+            <div className="sticky top-0 z-30 w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+                <div className="flex overflow-x-auto no-scrollbar px-4 md:px-6 py-3 gap-2 items-center w-full">
                     {PILLAR_FILTERS.map((f) => {
                         const Icon = f.icon;
                         const isActive = activeFilter === f.id;
@@ -359,13 +359,13 @@ export default function FeedPage() {
                                 key={f.id}
                                 onClick={() => setActiveFilter(f.id)}
                                 className={cn(
-                                    "flex items-center gap-1.5 px-4 py-3 text-xs font-semibold whitespace-nowrap transition-colors border-b-2",
+                                    "flex items-center gap-1.5 px-4 py-2 text-sm font-medium whitespace-nowrap rounded-full transition-all border",
                                     isActive
-                                        ? "border-cyan-500 text-cyan-600 dark:text-cyan-400"
-                                        : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300",
+                                        ? "bg-slate-900 text-white border-slate-900 shadow-sm dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100"
+                                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200",
                                 )}
                             >
-                                <Icon className="w-3.5 h-3.5" />
+                                <Icon className="w-4 h-4" />
                                 {f.label}
                             </button>
                         );
