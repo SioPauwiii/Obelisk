@@ -24,5 +24,9 @@ export default function DashboardLayoutWrapper({
 
     const username = user?.full_name ?? user?.email ?? "User";
 
-    return <DashboardLayout onLogout={handleLogout} username={username}>{children}</DashboardLayout>;
+    return (
+        <DashboardLayout onLogout={handleLogout} username={username}>
+            {children}
+        </DashboardLayout>
+    );
 }
