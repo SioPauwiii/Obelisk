@@ -8,7 +8,7 @@ import { createAdminClient } from "@/lib/supabase";
 //
 // Flow:
 //  1. Verify Privy access token
-//  2. Extract wallet address & account info from identity token
+//  2. Fetch user from Privy using the verified DID (no identity token needed)
 //  3. Upsert into public.users
 //  4. Mint custom Supabase JWT
 //  5. Set httpOnly cookie
@@ -43,50 +43,46 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // ── 2. Get user info from identity token ─────────
-        // The client sends the identity token in the request body
-        // so we can extract linked accounts (wallet, email, etc.)
+        // ── 2. Fetch user from Privy using verified DID ──
+        // verifiedClaims.userId is the Privy DID — already trusted, no extra
+        // client-side token needed. This avoids the rate-limited /users/me endpoint.
         const body = await req.json().catch(() => ({}));
-        const identityToken = body.identityToken;
 
         let walletAddress: string | null = null;
         let email: string | null = null;
         let authProvider = "unknown";
 
-        if (identityToken) {
-            try {
-                const privyUser =
-                    await privy.users().get({ id_token: identityToken });
+        try {
+            // verifiedClaims.user_id is the Privy user ID from the access token
+            const privyUser = await privy.users()._get(verifiedClaims.user_id);
 
-                // Extract embedded wallet address from linked accounts
-                for (const account of privyUser.linked_accounts) {
-                    if (
-                        account.type === "wallet" &&
-                        "wallet_client_type" in account &&
-                        account.wallet_client_type === "privy"
-                    ) {
-                        walletAddress = account.address.toLowerCase();
-                    }
-
-                    if (account.type === "google_oauth") {
-                        authProvider = "google";
-                        email = account.email ?? email;
-                    } else if (account.type === "apple_oauth") {
-                        authProvider = "apple";
-                        if ("email" in account) {
-                            email = (account.email as string) ?? email;
-                        }
-                    } else if (account.type === "email") {
-                        if (authProvider === "unknown") authProvider = "email";
-                        email = account.address ?? email;
-                    }
+            for (const account of privyUser.linked_accounts) {
+                if (
+                    account.type === "wallet" &&
+                    "wallet_client_type" in account &&
+                    account.wallet_client_type === "privy"
+                ) {
+                    walletAddress = account.address.toLowerCase();
                 }
-            } catch (err) {
-                console.error("Failed to parse identity token:", err);
+
+                if (account.type === "google_oauth") {
+                    authProvider = "google";
+                    email = account.email ?? email;
+                } else if (account.type === "apple_oauth") {
+                    authProvider = "apple";
+                    if ("email" in account) {
+                        email = (account.email as string) ?? email;
+                    }
+                } else if (account.type === "email") {
+                    if (authProvider === "unknown") authProvider = "email";
+                    email = account.address ?? email;
+                }
             }
+        } catch (err) {
+            console.error("Failed to fetch Privy user:", err);
         }
 
-        // Fallback: use wallet address from request body if not found in token
+        // Fallback: use wallet address from request body if server lookup failed
         if (!walletAddress && body.walletAddress) {
             walletAddress = body.walletAddress.toLowerCase();
         }
@@ -105,23 +101,26 @@ export async function POST(req: NextRequest) {
         // Check if user already exists by wallet_address
         const { data: existingUser } = await supabase
             .from("users")
-            .select("id")
+            .select("*")
             .eq("wallet_address", walletAddress)
             .single();
 
-        let userId: string;
+        let dbUser;
 
         if (existingUser) {
             // Update existing user
-            userId = existingUser.id;
-            await supabase
+            const { data: updatedUser } = await supabase
                 .from("users")
                 .update({
                     email: email ?? undefined,
                     auth_provider: authProvider,
                     updated_at: now,
                 })
-                .eq("id", userId);
+                .eq("id", existingUser.id)
+                .select("*")
+                .single();
+                
+            dbUser = updatedUser || existingUser;
         } else {
             // Insert new user
             const { data: newUser, error: insertError } = await supabase
@@ -136,7 +135,7 @@ export async function POST(req: NextRequest) {
                     created_at: now,
                     updated_at: now,
                 })
-                .select("id")
+                .select("*")
                 .single();
 
             if (insertError || !newUser) {
@@ -147,8 +146,10 @@ export async function POST(req: NextRequest) {
                 );
             }
 
-            userId = newUser.id;
+            dbUser = newUser;
         }
+
+        const userId = dbUser.id;
 
         // ── 4. Mint custom Supabase JWT ──────────────────
         const jwtSecret = process.env.SUPABASE_JWT_SECRET;
@@ -174,12 +175,7 @@ export async function POST(req: NextRequest) {
 
         // ── 5. Set httpOnly cookie & respond ─────────────
         const response = NextResponse.json({
-            user: {
-                id: userId,
-                email,
-                wallet_address: walletAddress,
-                auth_provider: authProvider,
-            },
+            user: dbUser,
             walletAddress,
         });
 
