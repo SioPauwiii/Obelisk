@@ -21,18 +21,21 @@ export function Header({
     // Close dropdown when clicking outside
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {
-            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+            if (
+                dropdownRef.current &&
+                !dropdownRef.current.contains(e.target as Node)
+            ) {
                 setOpen(false);
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
+        return () =>
+            document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
     return (
         <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 font-sans">
             <div className="flex items-center justify-between h-full px-4 md:px-6">
-
                 {/* Left: Logo + App Name */}
                 <div className="flex items-center gap-2">
                     <Image
@@ -63,11 +66,15 @@ export function Header({
                         <div className="absolute right-0 mt-2 w-52 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-lg shadow-slate-200/60 dark:shadow-black/40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
                             {/* Username header */}
                             <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
-                                <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Obelisk Handle</p>
-                                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate mt-0.5">{"@" + (username ?? "User")}</p>
+                                <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">
+                                    Obelisk Handle
+                                </p>
+                                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate mt-0.5">
+                                    {"@" + (username ?? "User")}
+                                </p>
                             </div>
 
-                            <button
+                            {/* <button
                                 onClick={() => {
                                     setOpen(false);
                                     onNotificationClick?.();
@@ -78,7 +85,7 @@ export function Header({
                                     <Bell size={14} />
                                 </span>
                                 Notifications
-                            </button>
+                            </button> */}
 
                             <div className="h-px bg-slate-100 dark:bg-slate-800 mx-3" />
 
@@ -97,7 +104,6 @@ export function Header({
                         </div>
                     )}
                 </div>
-
             </div>
         </header>
     );
