@@ -29,20 +29,35 @@ export const useCamera = () => {
   const maxDelta = useRef<number>(0);
 
   const startCamera = useCallback(async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setError("Your browser does not support camera access.");
+      return;
+    }
+
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
+      // First attempt: Try to get the back camera (ideal for mobile)
+      const constraints: MediaStreamConstraints = {
         video: {
-          facingMode: "environment", // Use back camera by default
+          facingMode: { ideal: "environment" },
           width: { ideal: 1920 },
           height: { ideal: 1080 },
         },
         audio: false,
-      });
+      };
+      
+      let mediaStream: MediaStream;
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (err) {
+        console.warn("Preferred camera constraints failed, falling back to basic video.", err);
+        // Second attempt: Just get any video device (covers laptops/desktops)
+        mediaStream = await navigator.mediaDevices.getUserMedia({ 
+          video: true, 
+          audio: false 
+        });
+      }
       
       setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
       setIsPermissionGranted(true);
       setError(null);
 
@@ -60,9 +75,13 @@ export const useCamera = () => {
       }
 
       window.addEventListener("deviceorientation", handleOrientation);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error accessing camera:", err);
-      setError("Camera access denied or not available.");
+      if (err.name === "NotAllowedError") {
+        setError("Camera permission denied. Please allow access in your browser settings.");
+      } else {
+        setError("Camera not available or another app is using it.");
+      }
     }
   }, []);
 
@@ -152,6 +171,13 @@ export const useCamera = () => {
       }, "image/jpeg", 0.9);
     });
   }, [stream]);
+
+  // Sync stream to video element
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream, isPermissionGranted]);
 
   useEffect(() => {
     return () => {
