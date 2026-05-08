@@ -112,6 +112,7 @@ function PostCard({ post }: { post: Post }) {
     const [imageError, setImageError] = useState(false);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [fullPostOpen, setFullPostOpen] = useState(false);
     const author = post.users;
     const mediaUrls = useMemo(
         () =>
@@ -134,6 +135,9 @@ function PostCard({ post }: { post: Post }) {
     const pillarColor =
         PILLAR_COLORS[post.pillar] ??
         "bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
+    const isLongTitle = post.title.length > 90;
+    const isLongCaption = (post.caption?.length ?? 0) > 180;
+    const canExpandText = isLongTitle || isLongCaption;
 
     // Debug: log image URL on mount and when it changes
     useEffect(() => {
@@ -154,16 +158,20 @@ function PostCard({ post }: { post: Post }) {
                         <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                             @{author?.handle ?? "anonymous"}
                         </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        <p className="max-sm:flex-col text-xs text-slate-500 dark:text-slate-400 flex  gap-1">
                             {post.location_name && (
-                                <>
+                                <div className="flex flex-row gap-1 items-center">
                                     <MapPin className="w-3 h-3" />
                                     {post.location_name}
-                                    <span className="mx-1">•</span>
-                                </>
+                                    <span className="mx-1 hidden md:flex">
+                                        •
+                                    </span>
+                                </div>
                             )}
-                            <Clock className="w-3 h-3" />
-                            {timeAgo(post.created_at)}
+                            <div className="flex flex-row gap-1 items-center">
+                                <Clock className="w-3 h-3" />
+                                {timeAgo(post.created_at)}
+                            </div>
                         </p>
                     </div>
                 </div>
@@ -179,13 +187,36 @@ function PostCard({ post }: { post: Post }) {
 
             {/* Title + Caption */}
             <div className="px-4 pt-3 pb-3">
-                <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                <h4
+                    className={cn(
+                        "text-sm font-semibold text-slate-900 dark:text-slate-100",
+                        "truncate",
+                    )}
+                    title={post.title}
+                >
                     {post.title}
                 </h4>
                 {post.caption && (
-                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                    <p
+                        className="mt-1 text-sm text-slate-600 dark:text-slate-300 wrap-anywhere"
+                        style={{
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                        }}
+                    >
                         {post.caption}
                     </p>
+                )}
+                {canExpandText && (
+                    <button
+                        type="button"
+                        onClick={() => setFullPostOpen(true)}
+                        className="mt-1 text-xs font-semibold text-cyan-600 hover:text-cyan-500 dark:text-cyan-400 dark:hover:text-cyan-300"
+                    >
+                        See more
+                    </button>
                 )}
             </div>
 
@@ -274,6 +305,74 @@ function PostCard({ post }: { post: Post }) {
                     initialIndex={activeImageIndex}
                     onClose={() => setLightboxOpen(false)}
                 />
+            )}
+
+            {fullPostOpen && (
+                <div className="fixed inset-0 z-50 bg-black/65 p-4 md:p-6">
+                    <div className="mx-auto h-full w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/95">
+                            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                Full Post
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => setFullPostOpen(false)}
+                                className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                                aria-label="Close full post"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        <div className="p-4 md:p-6 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-10 w-10 rounded-full bg-linear-to-br from-indigo-500 to-cyan-500 shrink-0" />
+                                    <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                                        @{author?.handle ?? "anonymous"}
+                                    </span>
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                                        {timeAgo(post.created_at)}
+                                    </span>
+                                </div>
+                                <span
+                                    className={cn(
+                                        "rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize",
+                                        pillarColor,
+                                    )}
+                                >
+                                    {post.pillar}
+                                </span>
+                            </div>
+
+                            <h3 className="text-lg font-bold leading-snug text-slate-900 dark:text-slate-100 wrap-anywhere">
+                                {post.title}
+                            </h3>
+
+                            {post.caption && (
+                                <p className="text-sm leading-relaxed whitespace-pre-wrap wrap-anywhere text-slate-700 dark:text-slate-300">
+                                    {post.caption}
+                                </p>
+                            )}
+
+                            {mediaUrls[activeImageIndex] && (
+                                <button
+                                    type="button"
+                                    onClick={() => setLightboxOpen(true)}
+                                    className="relative block aspect-4/3 w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800"
+                                >
+                                    <Image
+                                        src={mediaUrls[activeImageIndex]}
+                                        alt={`${post.title} preview`}
+                                        fill
+                                        className="object-cover"
+                                        unoptimized
+                                    />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Crypto Proof Toggle */}
