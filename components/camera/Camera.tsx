@@ -53,8 +53,6 @@ export const Camera: React.FC<CameraProps> = ({
         isPermissionGranted,
         isCapturing,
         livenessScore,
-        captureLimit,
-        capturesUsed,
         captureLimitReached,
         nextCaptureResetAt,
     } = useCamera();

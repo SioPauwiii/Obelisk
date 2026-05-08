@@ -9,6 +9,7 @@ import {
     Award,
     User,
     LucideIcon,
+    Plus,
 } from "lucide-react";
 
 export interface NavItemConfig {
@@ -35,9 +36,7 @@ export function BottomNav() {
     };
 
     return (
-        <nav
-            className="fixed bottom-0 left-0 right-0 z-40 font-sans bg-white dark:bg-slate-950"
-        >
+        <nav className="fixed bottom-0 left-0 right-0 z-40 font-sans bg-white dark:bg-slate-950">
             {/* Subtle top border */}
             <div className="h-px w-full bg-slate-200 dark:bg-slate-800" />
 
@@ -53,8 +52,8 @@ export function BottomNav() {
                                 href={item.href}
                                 className="flex flex-col items-center justify-center flex-1"
                             >
-                                <div className="relative -top-3 flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-r from-indigo-600 to-cyan-500 shadow-lg shadow-cyan-500/30 text-white transition-transform active:scale-95 hover:shadow-xl hover:shadow-cyan-500/40">
-                                    <Camera size={28} strokeWidth={2} />
+                                <div className="relative -top-3 flex items-center justify-center w-14 h-14 rounded-full bg-linear-to-r from-indigo-600 to-indigo-500 shadow-lg shadow-cyan-500/30 text-white transition-transform active:scale-95 hover:shadow-xl hover:shadow-cyan-500/40">
+                                    <Plus size={28} strokeWidth={2} />
                                 </div>
                             </Link>
                         );

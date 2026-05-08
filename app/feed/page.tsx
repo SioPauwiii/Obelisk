@@ -195,7 +195,9 @@ function PostCard({
             {/* Post Header */}
             <div className="p-4 pb-0 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-linear-to-br from-indigo-500 to-cyan-500 shrink-0" />
+                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-linear-to-br from-indigo-500 to-cyan-500 text-[13px] font-bold text-white flex-shrink-0">
+                        {(author?.handle ?? "?").slice(0, 1).toUpperCase()}
+                    </span>
                     <div>
                         <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                             @{author?.handle ?? "anonymous"}
@@ -675,7 +677,7 @@ export default function FeedPage() {
                     <div className="space-y-8">
                         {/* Featured Post */}
                         {posts[0] && (
-                            <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 shadow-md dark:border-slate-800 dark:from-slate-900 dark:to-slate-950 overflow-hidden hover:shadow-lg transition-shadow">
+                            <div className="rounded-3xl border border-slate-200 bg-linear-to-br from-white to-slate-50 shadow-md dark:border-slate-800 dark:from-slate-900 dark:to-slate-950 overflow-hidden hover:shadow-lg transition-shadow">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
                                     {/* Featured Image */}
                                     <div className="flex flex-col gap-2 order-2 md:order-1">
@@ -736,7 +738,15 @@ export default function FeedPage() {
                                             <div className="flex items-start justify-between gap-4">
                                                 <div>
                                                     <div className="flex items-center gap-2 mb-2">
-                                                        <div className="h-8 w-8 rounded-full bg-linear-to-br from-indigo-500 to-cyan-500 shrink-0" />
+                                                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-indigo-500 to-cyan-500 text-[11px] font-bold text-white">
+                                                            {(
+                                                                posts[0].users
+                                                                    ?.handle ??
+                                                                "?"
+                                                            )
+                                                                .slice(0, 1)
+                                                                .toUpperCase()}
+                                                        </span>
                                                         <div>
                                                             <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
                                                                 @
