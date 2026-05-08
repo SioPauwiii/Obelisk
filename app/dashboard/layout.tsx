@@ -12,7 +12,7 @@ export default function DashboardLayoutWrapper({
 }) {
     const router = useRouter();
     const queryClient = useQueryClient();
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
 
     const handleLogout = async () => {
         await logout();
@@ -20,5 +20,7 @@ export default function DashboardLayoutWrapper({
         router.replace("/signin");
     };
 
-    return <DashboardLayout onLogout={handleLogout}>{children}</DashboardLayout>;
+    const username = user?.full_name ?? user?.email ?? "User";
+
+    return <DashboardLayout onLogout={handleLogout} username={username}>{children}</DashboardLayout>;
 }
