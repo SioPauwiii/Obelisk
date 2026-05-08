@@ -158,7 +158,7 @@ function PostCard({ post }: { post: Post }) {
                         <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                             @{author?.handle ?? "anonymous"}
                         </h3>
-                        <p className="max-sm:flex-col text-xs text-slate-500 dark:text-slate-400 flex  gap-1">
+                        <div className="max-sm:flex-col text-xs text-slate-500 dark:text-slate-400 flex gap-1">
                             {post.location_name && (
                                 <div className="flex flex-row gap-1 items-center">
                                     <MapPin className="w-3 h-3" />
@@ -172,7 +172,7 @@ function PostCard({ post }: { post: Post }) {
                                 <Clock className="w-3 h-3" />
                                 {timeAgo(post.created_at)}
                             </div>
-                        </p>
+                        </div>
                     </div>
                 </div>
                 <span
@@ -308,11 +308,11 @@ function PostCard({ post }: { post: Post }) {
             )}
 
             {fullPostOpen && (
-                <div className="fixed inset-0 z-50 bg-black/65 p-4 md:p-6">
-                    <div className="mx-auto h-full w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                <div className="fixed inset-0 z-50 bg-black/65 ">
+                    <div className="mx-auto h-full w-full max-w-3xl overflow-y-auto border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/95">
                             <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                Full Post
+                                Posted by @{author?.handle ?? "anonymous"}
                             </p>
                             <button
                                 type="button"
