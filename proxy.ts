@@ -13,7 +13,13 @@ import { NextRequest, NextResponse } from "next/server";
 // ─────────────────────────────────────────────────────
 
 // Routes that require authentication + completed onboarding
-const PROTECTED_ROUTES = ["/feed", "/capture"];
+const PROTECTED_ROUTES = [
+    "/feed",
+    "/capture",
+    "/explore",
+    "/badges",
+    "/profile",
+];
 
 // Routes that require authentication but NOT onboarding
 const ONBOARDING_ROUTES = ["/onboarding"];
@@ -28,7 +34,9 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
     try {
         const parts = token.split(".");
         if (parts.length !== 3) return null;
-        const payload = JSON.parse(atob(parts[1]));
+        const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+        const payload = JSON.parse(atob(padded));
         return payload;
     } catch {
         return null;
@@ -118,6 +126,12 @@ export const config = {
         "/feed/:path*",
         "/capture",
         "/capture/:path*",
+        "/explore",
+        "/explore/:path*",
+        "/badges",
+        "/badges/:path*",
+        "/profile",
+        "/profile/:path*",
         "/terms-of-service",
         "/privacy-policy",
     ],
