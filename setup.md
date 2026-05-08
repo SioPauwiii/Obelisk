@@ -1,93 +1,180 @@
-# Privy Auth Integration Setup
+# Obelisk Setup Guide (Full App)
 
-This guide explains how to run the Next.js frontend and Express TypeScript backend with Privy authentication.
+This guide covers everything needed to run Obelisk end-to-end:
 
-## 1) Install required packages
+- Next.js app (main app)
+- Supabase database + auth-backed API routes
+- Privy authentication
+- Lighthouse IPFS uploads
+- Optional Express server in `server/`
 
-### Frontend (`Obelisk/`)
+## 1. Prerequisites
+
+1. Install Node.js 20+.
+2. Install npm (bundled with Node).
+3. Have a Supabase project ready.
+4. Have a Privy app ready.
+5. Have a Lighthouse API key.
+6. Use HTTPS or localhost for camera access (required by browsers).
+
+## 2. Install Dependencies
+
+From repo root:
 
 ```bash
-npm install @privy-io/react-auth @tanstack/react-query
+npm install
 ```
 
-### Backend (`Obelisk/server/`)
+Optional backend server dependencies:
 
 ```bash
-npm install @privy-io/server-auth jsonwebtoken
+cd server
+npm install
+cd ..
 ```
 
-> `jsonwebtoken` is optional for this implementation (Privy server SDK handles verification), but it is installed if you want to decode or inspect JWTs in custom flows.
+## 3. Environment Variables (Root App)
 
-## 2) Configure Privy dashboard
-
-1. Go to the Privy Dashboard: `https://dashboard.privy.io`.
-2. Create a new app (or open your existing app).
-3. In login methods, enable **Wallet**.
-4. Add your allowed frontend domains (for local dev include your local app URL, e.g. `http://localhost:3000`).
-5. Copy your **App ID**.
-6. Copy your **App Secret** from the dashboard's credentials section.
-
-## 3) Configure environment variables
-
-## Frontend `.env.local` (in `Obelisk/`)
+Create `.env` (or `.env.local`) at repo root with:
 
 ```env
-NEXT_PUBLIC_PRIVY_APP_ID=your_privy_app_id
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_JWT_SECRET=
+
+NEXT_PUBLIC_PRIVY_APP_ID=
+PRIVY_APP_SECRET=
+
+NEXT_PUBLIC_LIGHTHOUSE_API_KEY=
+
+# Optional (only needed for smart account / server integration flows)
 NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
+NEXT_PUBLIC_AVALANCHE_FUJI_RPC_URL=
+NEXT_PUBLIC_PIMLICO_API_KEY=
 ```
 
-## Backend `.env` (in `Obelisk/server/`)
+Notes:
+
+- `SUPABASE_JWT_SECRET` must match your Supabase project's JWT secret.
+- `SUPABASE_SERVICE_ROLE_KEY` is server-only. Never expose it in client code.
+- `NEXT_PUBLIC_LIGHTHOUSE_API_KEY` is used by the capture flow in MVP.
+
+## 4. Supabase Database Setup
+
+1. Open Supabase SQL editor.
+2. Run the SQL in `supabase.editor`.
+3. Confirm these tables exist:
+
+- `public.users`
+- `public.posts`
+
+The app APIs rely on:
+
+- `users.privy_did` for identity mapping
+- `posts` for feed rendering and capture uploads
+
+## 5. Privy Setup
+
+In Privy dashboard:
+
+1. Create/select app.
+2. Enable login methods you use (Google, Apple, Email, Wallet as needed).
+3. Add allowed origins (at least `http://localhost:3000`).
+4. Copy values into:
+
+- `NEXT_PUBLIC_PRIVY_APP_ID`
+- `PRIVY_APP_SECRET`
+
+## 6. Run the Main App
+
+```bash
+npm run dev
+```
+
+Open:
+
+- `http://localhost:3000`
+
+Recommended validation:
+
+1. Sign in.
+2. Complete onboarding.
+3. Open `/capture`.
+4. Grant camera permission once.
+5. Return to `/capture` and verify camera auto-starts.
+6. Verify capture limit: max 5 captures per 24 hours.
+7. Archive a post and verify it appears in `/feed`.
+
+## 7. Capture Behavior (Current)
+
+Camera flow now does the following:
+
+- Auto-starts camera when browser permission state is already `granted`.
+- Enforces `5` captures per rolling 24-hour window (stored in browser local storage).
+- Blocks additional captures after limit is reached and shows reset time.
+
+Storage key used in browser:
+
+- `obelisk-camera-capture-history-v1`
+
+## 8. Optional Express Server Setup (`server/`)
+
+Only needed if you are using routes under `server/src` (legacy or separate backend APIs).
+
+Create `server/.env`:
 
 ```env
 API_VERSION=v1
+PRIVY_APP_ID=
+PRIVY_APP_SECRET=
 NODE_ENV=development
 PORT=4000
 CORS_ORIGIN=http://localhost:3000
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX=100
 TRUST_PROXY=0
-PRIVY_APP_ID=your_privy_app_id
-PRIVY_APP_SECRET=your_privy_app_secret
 ```
 
-## 4) Run apps
-
-### Start backend
+Run server:
 
 ```bash
 cd server
 npm run dev
 ```
 
-### Start frontend
+Health check:
+
+- `http://localhost:4000/api/v1/health`
+
+## 9. Production Build Check
+
+From root:
 
 ```bash
-npm run dev
+npm run build
 ```
 
-## 5) What was implemented
+If build passes, routing + API compilation is healthy.
 
-- Frontend provider setup (`PrivyProvider` + `QueryClientProvider`)
-- `usePrivyAuth` hook with `getAccessToken()` integration
-- Authenticated fetch wrapper that sends:
-  - `Authorization: Bearer <privy_access_token>`
-- Login page with **Connect Wallet**
-- Protected dashboard route with user wallet info
-- Logout clears:
-  1. Privy session (`logout()`)
-  2. TanStack Query cache (`queryClient.clear()`)
-- Backend JWT middleware using `@privy-io/server-auth`
-- Protected routes:
-  - `GET /api/v1/auth/me`
-  - `GET /api/v1/auth/verify`
+## 10. Common Issues
 
-## 6) Verification checklist
+1. Camera not starting:
 
-1. Open `/signin`, click **Connect Wallet**.
-2. After successful login, verify redirect to `/dashboard`.
-3. Confirm dashboard shows wallet address.
-4. Confirm backend-protected data loads from `/api/v1/auth/me`.
-5. Click **Logout** and verify:
-   - session is removed
-   - query cache is empty
-   - redirect to `/signin`
+- Ensure site is localhost/HTTPS.
+- Check browser camera permission for the site.
+
+2. Capture blocked unexpectedly:
+
+- You may have hit the 5-per-24h limit.
+- Clear `obelisk-camera-capture-history-v1` in local storage only for local testing.
+
+3. Post creation fails with 401:
+
+- Verify auth cookie is being set by `/api/auth/wallet-session`.
+- Verify Privy and Supabase secrets are correct.
+
+4. Post creation fails with 500:
+
+- Verify `posts` table exists and columns match `supabase.editor`.
+- Verify `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_JWT_SECRET`.

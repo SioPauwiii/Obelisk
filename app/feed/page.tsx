@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
@@ -74,8 +74,7 @@ const PILLAR_COLORS: Record<string, string> = {
         "bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400",
     knowledge:
         "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
-    culture:
-        "bg-pink-50 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400",
+    culture: "bg-pink-50 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400",
     environment:
         "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400",
     innovation:
@@ -104,17 +103,27 @@ function timeAgo(dateStr: string): string {
 // ─────────────────────────────────────────────────────
 function PostCard({ post }: { post: Post }) {
     const [showProof, setShowProof] = useState(false);
+    const [imageError, setImageError] = useState(false);
     const author = post.users;
     const pillarColor =
         PILLAR_COLORS[post.pillar] ??
         "bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
+
+    // Debug: log image URL on mount and when it changes
+    useEffect(() => {
+        if (!post.image_url) {
+            console.warn(`[Feed] Post ${post.id} has no image_url`);
+        } else {
+            console.log(`[Feed] Post ${post.id} image_url: ${post.image_url}`);
+        }
+    }, [post.id, post.image_url]);
 
     return (
         <article className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
             {/* Post Header */}
             <div className="p-4 pb-0 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 flex-shrink-0" />
+                    <div className="h-10 w-10 rounded-full bg-linear-to-br from-indigo-500 to-cyan-500 shrink-0" />
                     <div>
                         <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                             @{author?.handle ?? "anonymous"}
@@ -155,21 +164,47 @@ function PostCard({ post }: { post: Post }) {
             </div>
 
             {/* Image from IPFS */}
-            <div className="relative aspect-4/3 w-full bg-slate-100 dark:bg-slate-800">
-                <Image
-                    src={post.image_url}
-                    alt={post.title}
-                    fill
-                    className="object-cover"
-                    unoptimized
-                />
+            <div className="relative aspect-4/3 w-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
+                {!imageError && post.image_url ? (
+                    <Image
+                        src={post.image_url}
+                        alt={post.title}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                        onError={() => {
+                            console.error(
+                                `[Feed] Image load failed for post ${post.id}:`,
+                                post.image_url,
+                            );
+                            setImageError(true);
+                        }}
+                    />
+                ) : (
+                    <div className="text-center text-slate-400 dark:text-slate-500 text-xs px-4 py-8">
+                        {imageError ? (
+                            <>
+                                <p className="font-medium mb-2">
+                                    Image failed to load
+                                </p>
+                                <p className="text-[11px] font-mono text-slate-500 dark:text-slate-600 break-all">
+                                    {post.image_url || "No URL"}
+                                </p>
+                            </>
+                        ) : (
+                            <p>No image available</p>
+                        )}
+                    </div>
+                )}
                 {/* Liveness Badge */}
-                <div className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-medium text-white backdrop-blur-sm">
-                    <ShieldCheck className="h-3 w-3 text-emerald-400" />
-                    {(post.liveness_score ?? 0) > 5
-                        ? "Verified Live"
-                        : "Captured"}
-                </div>
+                {!imageError && (
+                    <div className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-medium text-white backdrop-blur-sm">
+                        <ShieldCheck className="h-3 w-3 text-emerald-400" />
+                        {(post.liveness_score ?? 0) > 5
+                            ? "Verified Live"
+                            : "Captured"}
+                    </div>
+                )}
             </div>
 
             {/* Crypto Proof Toggle */}
@@ -197,7 +232,7 @@ function PostCard({ post }: { post: Post }) {
                                 href={post.image_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="font-mono text-cyan-600 dark:text-cyan-400 hover:underline truncate max-w-[140px]"
+                                className="font-mono text-cyan-600 dark:text-cyan-400 hover:underline truncate max-w-35"
                             >
                                 {post.image_cid.slice(0, 12)}...
                             </a>
@@ -283,7 +318,7 @@ function EmptyState() {
             </p>
             <Link
                 href="/capture"
-                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-cyan-500/20 hover:shadow-xl hover:shadow-cyan-500/30 transition-all"
+                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-linear-to-r from-indigo-600 to-cyan-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-cyan-500/20 hover:shadow-xl hover:shadow-cyan-500/30 transition-all"
             >
                 <Camera className="w-4 h-4" />
                 Open Camera
@@ -349,9 +384,7 @@ export default function FeedPage() {
                 ) : posts.length === 0 ? (
                     <EmptyState />
                 ) : (
-                    posts.map((post) => (
-                        <PostCard key={post.id} post={post} />
-                    ))
+                    posts.map((post) => <PostCard key={post.id} post={post} />)
                 )}
             </div>
         </main>

@@ -34,7 +34,6 @@ export default function LoginPage() {
     useEffect(() => {
         if (authError) {
             toastError(authError);
-            handleReset(); // Reset active method when error occurs
         }
     }, [authError]);
 
@@ -50,11 +49,6 @@ export default function LoginPage() {
         // Use initOAuth directly — this is the working approach
         // useAuth will pick up the session after Privy authenticates
         initOAuth({ provider: "google" });
-    };
-
-    const handleReset = () => {
-        clearError();
-        setActiveMethod(null);
     };
 
     // Show loading state while initializing
@@ -116,7 +110,10 @@ export default function LoginPage() {
                                 <button
                                     type="button"
                                     onClick={handleWalletLogin}
-                                    disabled={!!activeMethod || isLoading}
+                                    disabled={
+                                        (!!activeMethod && !authError) ||
+                                        isLoading
+                                    }
                                     className="w-full rounded-lg bg-linear-to-r from-indigo-600 to-cyan-500 px-4 py-3 text-base font-semibold text-white shadow-lg shadow-cyan-500/20 transition-all hover:from-indigo-500 hover:to-cyan-400 hover:shadow-xl hover:shadow-cyan-500/30 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-slate-950"
                                 >
                                     {activeMethod === "wallet" && !authError ? (
@@ -135,7 +132,10 @@ export default function LoginPage() {
                                 <button
                                     type="button"
                                     onClick={handleGoogleLogin}
-                                    disabled={!!activeMethod || isLoading}
+                                    disabled={
+                                        (!!activeMethod && !authError) ||
+                                        isLoading
+                                    }
                                     className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base font-semibold text-slate-800 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus:ring-offset-slate-950"
                                 >
                                     {activeMethod === "google" && !authError ? (
