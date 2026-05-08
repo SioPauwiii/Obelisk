@@ -23,6 +23,7 @@ import {
     HeartHandshake,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Lightbox from "@/components/UI/Lightbox";
 
 // ─────────────────────────────────────────────────────
 // Types
@@ -47,6 +48,10 @@ interface Post {
     proof_cid: string;
     image_url: string;
     proof_url: string;
+    image_cids?: string[] | null;
+    proof_cids?: string[] | null;
+    image_urls?: string[] | null;
+    proof_urls?: string[] | null;
     tx_hash: string | null;
     liveness_score: number | null;
     is_verified: boolean;
@@ -104,19 +109,35 @@ function timeAgo(dateStr: string): string {
 function PostCard({ post }: { post: Post }) {
     const [showProof, setShowProof] = useState(false);
     const [imageError, setImageError] = useState(false);
+    const [activeImageIndex, setActiveImageIndex] = useState(0);
+    const [lightboxOpen, setLightboxOpen] = useState(false);
     const author = post.users;
+    const mediaUrls =
+        post.image_urls?.length && post.image_urls.length > 0
+            ? post.image_urls
+            : post.image_url
+              ? [post.image_url]
+              : [];
+    const proofUrls =
+        post.proof_urls?.length && post.proof_urls.length > 0
+            ? post.proof_urls
+            : post.proof_url
+              ? [post.proof_url]
+              : [];
     const pillarColor =
         PILLAR_COLORS[post.pillar] ??
         "bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
 
     // Debug: log image URL on mount and when it changes
     useEffect(() => {
-        if (!post.image_url) {
-            console.warn(`[Feed] Post ${post.id} has no image_url`);
+        if (!mediaUrls.length) {
+            console.warn(`[Feed] Post ${post.id} has no image_urls`);
         } else {
-            console.log(`[Feed] Post ${post.id} image_url: ${post.image_url}`);
+            console.log(`[Feed] Post ${post.id} image_urls:`, mediaUrls);
         }
-    }, [post.id, post.image_url]);
+        setActiveImageIndex(0);
+        setImageError(false);
+    }, [post.id, mediaUrls.join("|")]);
 
     return (
         <article className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
@@ -165,21 +186,28 @@ function PostCard({ post }: { post: Post }) {
 
             {/* Image from IPFS */}
             <div className="relative aspect-4/3 w-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
-                {!imageError && post.image_url ? (
-                    <Image
-                        src={post.image_url}
-                        alt={post.title}
-                        fill
-                        className="object-cover"
-                        unoptimized
-                        onError={() => {
-                            console.error(
-                                `[Feed] Image load failed for post ${post.id}:`,
-                                post.image_url,
-                            );
-                            setImageError(true);
-                        }}
-                    />
+                {!imageError && mediaUrls[activeImageIndex] ? (
+                    <button
+                        type="button"
+                        onClick={() => setLightboxOpen(true)}
+                        className="absolute inset-0 block w-full h-full cursor-zoom-in"
+                        aria-label="Open image"
+                    >
+                        <Image
+                            src={mediaUrls[activeImageIndex]}
+                            alt={`${post.title} ${activeImageIndex + 1}`}
+                            fill
+                            className="object-cover"
+                            unoptimized
+                            onError={() => {
+                                console.error(
+                                    `[Feed] Image load failed for post ${post.id}:`,
+                                    mediaUrls[activeImageIndex],
+                                );
+                                setImageError(true);
+                            }}
+                        />
+                    </button>
                 ) : (
                     <div className="text-center text-slate-400 dark:text-slate-500 text-xs px-4 py-8">
                         {imageError ? (
@@ -188,7 +216,7 @@ function PostCard({ post }: { post: Post }) {
                                     Image failed to load
                                 </p>
                                 <p className="text-[11px] font-mono text-slate-500 dark:text-slate-600 break-all">
-                                    {post.image_url || "No URL"}
+                                    {mediaUrls[activeImageIndex] || "No URL"}
                                 </p>
                             </>
                         ) : (
@@ -196,9 +224,37 @@ function PostCard({ post }: { post: Post }) {
                         )}
                     </div>
                 )}
+                {mediaUrls.length > 1 && (
+                    <div className="absolute bottom-3 left-3 flex flex-wrap gap-2 max-w-[calc(100%-1.5rem)]">
+                        {mediaUrls.map((src, index) => (
+                            <button
+                                key={`${post.id}-${src}`}
+                                type="button"
+                                onClick={() => {
+                                    setActiveImageIndex(index);
+                                    setImageError(false);
+                                }}
+                                className={cn(
+                                    "relative h-10 w-10 overflow-hidden rounded-lg border transition-all",
+                                    index === activeImageIndex
+                                        ? "border-emerald-400 ring-2 ring-emerald-400/30"
+                                        : "border-white/20 opacity-80 hover:opacity-100",
+                                )}
+                            >
+                                <Image
+                                    src={src}
+                                    alt={`Thumbnail ${index + 1}`}
+                                    fill
+                                    className="object-cover"
+                                    unoptimized
+                                />
+                            </button>
+                        ))}
+                    </div>
+                )}
                 {/* Liveness Badge */}
                 {!imageError && (
-                    <div className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-medium text-white backdrop-blur-sm">
+                    <div className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-medium text-white backdrop-blur-sm">
                         <ShieldCheck className="h-3 w-3 text-emerald-400" />
                         {(post.liveness_score ?? 0) > 5
                             ? "Verified Live"
@@ -206,6 +262,14 @@ function PostCard({ post }: { post: Post }) {
                     </div>
                 )}
             </div>
+
+            {lightboxOpen && (
+                <Lightbox
+                    images={mediaUrls}
+                    initialIndex={activeImageIndex}
+                    onClose={() => setLightboxOpen(false)}
+                />
+            )}
 
             {/* Crypto Proof Toggle */}
             <button
@@ -229,18 +293,22 @@ function PostCard({ post }: { post: Post }) {
                         <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                             <Database className="h-3.5 w-3.5" /> IPFS:{" "}
                             <a
-                                href={post.image_url}
+                                href={mediaUrls[activeImageIndex]}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="font-mono text-cyan-600 dark:text-cyan-400 hover:underline truncate max-w-35"
                             >
-                                {post.image_cid.slice(0, 12)}...
+                                {post.image_cids?.[activeImageIndex]?.slice(
+                                    0,
+                                    12,
+                                ) || "No CID"}
+                                ...
                             </a>
                         </div>
                         <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                             <Link2 className="h-3.5 w-3.5" />{" "}
                             <a
-                                href={post.proof_url}
+                                href={proofUrls[activeImageIndex]}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="font-mono text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1"

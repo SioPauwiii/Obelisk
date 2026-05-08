@@ -50,6 +50,10 @@ CREATE TABLE public.posts (
   proof_cid text NOT NULL,
   image_url text NOT NULL,
   proof_url text NOT NULL,
+  image_cids text[] DEFAULT '{}'::text[],
+  proof_cids text[] DEFAULT '{}'::text[],
+  image_urls text[] DEFAULT '{}'::text[],
+  proof_urls text[] DEFAULT '{}'::text[],
 
   -- Blockchain anchoring (nullable until minted)
   tx_hash text,
