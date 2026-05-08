@@ -13,22 +13,25 @@ export async function uploadToLighthouse(
     }
 
     try {
-        // For browser environments, creating a File object and using lighthouse.upload
-        // is the most reliable way to preserve the filename and metadata.
-        let file: File;
-        if (data instanceof Blob) {
-            file = new File([data], name, { type: data.type });
-        } else if (typeof data === "string") {
-            file = new File([data], name, { type: "text/plain" });
+        let hash: string;
+
+        // In Node.js, lighthouse.upload() expects a local file path string.
+        // For metadata (JSON strings), we must use uploadText() to avoid File/Path errors.
+        if (typeof data === "string") {
+            const response = await lighthouse.uploadText(data, apiKey, name);
+            hash = response.data.Hash;
         } else {
-            file = new File([data as any], name);
+            // For browser environments (image uploads)
+            let file: File;
+            if (data instanceof Blob) {
+                file = new File([data], name, { type: data.type });
+            } else {
+                file = new File([data as any], name);
+            }
+            const response = await lighthouse.upload([file], apiKey);
+            hash = response.data.Hash;
         }
 
-        // lighthouse.upload takes an array of files or a FileList
-        const response = await lighthouse.upload([file], apiKey);
-
-        // Response structure: { data: { Name, Hash, Size } }
-        const hash = response.data.Hash;
         const url = `https://sensitive-mockingbird-6dww5.lighthouseweb3.xyz/ipfs/${hash}`;
 
         return { hash, url };
