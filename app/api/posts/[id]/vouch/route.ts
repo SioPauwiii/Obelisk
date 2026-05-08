@@ -100,6 +100,9 @@ export async function POST(
         // ── 6. Increment voucher_count on the vouching user ──
         await supabase.rpc("increment_voucher_count", { user_id: voucherId });
 
+        // ── 6.5 Increment received_vouches on the post author ──
+        await supabase.rpc("increment_received_vouches", { user_id: post.user_id });
+
         // ── 7. Trigger SBT mint on first vouch ───────────
         const newVouchCount = updatedPost.vouch_count ?? 1;
         const sbtTriggered  = newVouchCount === 1 && post.sbt_mint_status === "none";
