@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { usePrivy, useWallets, useCreateWallet } from "@privy-io/react-auth";
 
 // ─────────────────────────────────────────────────────
 // Types
@@ -9,10 +9,11 @@ import { usePrivy, useWallets } from "@privy-io/react-auth";
 
 export interface AppUser {
     id: string;
+    privy_did: string;
     email: string | null;
     full_name: string | null;
     avatar_url: string | null;
-    wallet_address: string;
+    wallet_address: string | null;
     auth_provider: string;
     is_verified_human: boolean;
     humanity_score: number;
@@ -51,26 +52,31 @@ export function useAuth(): UseAuth {
     } = usePrivy();
 
     const { wallets } = useWallets();
+    const { createWallet } = useCreateWallet();
 
     const [user, setUser] = useState<AppUser | null>(null);
     const [walletAddress, setWalletAddress] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [authError, setAuthError] = useState<string | null>(null);
     const sessionCreatedRef = useRef(false);
+    const walletCreationAttemptedRef = useRef(false);
 
-    // ── Find the best available wallet ───────────────
-    // Prefer the Privy embedded wallet, fall back to any connected wallet
+    // ── Resolve wallet address from all sources ──────
     const embeddedWallet = wallets.find(
         (w) => w.walletClientType === "privy"
     );
     const activeWallet = embeddedWallet ?? wallets[0] ?? null;
+    const resolvedWalletAddress =
+        activeWallet?.address ??
+        privyUser?.wallet?.address ??
+        null;
 
-    // ── Stable ref to getAccessToken (avoids useCallback dep churn) ─
+    // ── Stable ref ───────────────────────────────────
     const getAccessTokenRef = useRef(getAccessToken);
     getAccessTokenRef.current = getAccessToken;
 
-    // ── Create Supabase session after Privy auth ─────
-    const createSession = useCallback(async (walletAddr: string) => {
+    // ── Create session — NO wallet required ──────────
+    const createSession = useCallback(async () => {
         if (sessionCreatedRef.current) return;
 
         setIsLoading(true);
@@ -91,38 +97,39 @@ export function useAuth(): UseAuth {
                     Authorization: `Bearer ${accessToken}`,
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({
-                    walletAddress: walletAddr,
-                }),
+                // No body — server gets everything from the Privy token
             });
 
             const payload = await res.json().catch(() => null);
 
             if (!res.ok) {
-                console.error("Failed to create wallet session");
                 setAuthError(
-                    payload?.error ?? "Unable to finish sign-in. Please try again."
+                    payload?.error ??
+                        "Unable to finish sign-in. Please try again."
                 );
                 sessionCreatedRef.current = false;
                 return;
             }
 
-            const data = payload as { user?: AppUser; walletAddress: string };
-            setWalletAddress(data.walletAddress);
-
-            if (data.user) {
-                setUser(data.user as AppUser);
+            const data = payload as {
+                user?: AppUser;
+                walletAddress: string | null;
+            };
+            if (data.walletAddress) {
+                setWalletAddress(data.walletAddress);
             }
-        } catch (error) {
-            console.error("Session creation error:", error);
+            if (data.user) {
+                setUser(data.user);
+            }
+        } catch {
             setAuthError("Unable to finish sign-in. Please try again.");
             sessionCreatedRef.current = false;
         } finally {
             setIsLoading(false);
         }
-    }, []); // stable — intentionally empty deps
+    }, []);
 
-    // ── Effect: handle auth state changes ────────────
+    // ── Effect: create session IMMEDIATELY on auth ───
     useEffect(() => {
         if (!ready) return;
 
@@ -132,23 +139,60 @@ export function useAuth(): UseAuth {
             setAuthError(null);
             setIsLoading(false);
             sessionCreatedRef.current = false;
+            walletCreationAttemptedRef.current = false;
             return;
         }
 
-        // Use any available wallet (embedded or external)
-        if (activeWallet?.address) {
-            setWalletAddress(activeWallet.address.toLowerCase());
-            createSession(activeWallet.address);
+        // Authenticated — create session immediately
+        // Server will get wallet from Privy API (no client wallet needed)
+        createSession();
+    }, [ready, authenticated, createSession]);
+
+    // ── Effect: create embedded wallet if none exists ─
+    // Privy's createOnLogin does NOT work with loginWithCode / initOAuth,
+    // so we must manually create the wallet after authentication.
+    useEffect(() => {
+        if (!ready || !authenticated || !privyUser) return;
+        if (walletCreationAttemptedRef.current) return;
+        if (resolvedWalletAddress) {
+            setWalletAddress(resolvedWalletAddress.toLowerCase());
+            return;
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [ready, authenticated, activeWallet?.address]);
+
+        walletCreationAttemptedRef.current = true;
+
+        createWallet()
+            .then((wallet) => {
+                if (wallet?.address) {
+                    setWalletAddress(wallet.address.toLowerCase());
+                    // Fire-and-forget: update the server with the new wallet
+                    getAccessTokenRef.current().then((token) => {
+                        if (!token) return;
+                        fetch("/api/auth/wallet-session", {
+                            method: "PATCH",
+                            headers: {
+                                Authorization: `Bearer ${token}`,
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                                walletAddress: wallet.address,
+                            }),
+                        }).catch(() => {});
+                    });
+                }
+            })
+            .catch(() => {
+                // Non-critical — user can still use the app without a
+                // client-side embedded wallet (e.g. wallet already exists
+                // on Privy but isn't connected in this browser)
+            });
+    }, [ready, authenticated, privyUser, resolvedWalletAddress, createWallet]);
 
     // ── Login ────────────────────────────────────────
     const login = useCallback(
         (method?: LoginMethod) => {
             setAuthError(null);
             if (method === "wallet") {
-                // Open Privy modal for wallet connection
                 privyLogin();
                 return;
             }
@@ -164,24 +208,18 @@ export function useAuth(): UseAuth {
     // ── Logout ───────────────────────────────────────
     const logout = useCallback(async () => {
         try {
-            // Clear Supabase session cookie
             await fetch("/api/auth/logout", { method: "POST" });
-
-            // Clear Privy session
             await privyLogout();
-
-            // Reset local state
             setUser(null);
             setWalletAddress(null);
             sessionCreatedRef.current = false;
+            walletCreationAttemptedRef.current = false;
         } catch (error) {
             console.error("Logout error:", error);
         }
     }, [privyLogout]);
 
-    const clearError = useCallback(() => {
-        setAuthError(null);
-    }, []);
+    const clearError = useCallback(() => setAuthError(null), []);
 
     return {
         user,
