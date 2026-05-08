@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 export default function CapturePage() {
   const [capturedData, setCapturedData] = useState<{ blob: Blob; proof: any } | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [archiveResult, setArchiveResult] = useState<{ imageHash: string; proofHash: string; imageUrl: string; proofUrl: string } | null>(null);
 
   const handleCapture = ({ blob, proof }: { blob: Blob; proof: any }) => {
     setCapturedData({ blob, proof });
@@ -19,6 +21,23 @@ export default function CapturePage() {
     setCapturedData(null);
     if (imageUrl) URL.revokeObjectURL(imageUrl);
     setImageUrl(null);
+    setArchiveResult(null);
+  };
+
+  const handleArchive = async () => {
+    if (!capturedData) return;
+    
+    setIsArchiving(true);
+    try {
+      const { archiveMoment } = await import("@/lib/utils/storage");
+      const result = await archiveMoment(capturedData.blob, capturedData.proof);
+      setArchiveResult(result);
+    } catch (error) {
+      console.error("Archival failed:", error);
+      alert("Failed to archive. Make sure LIGHTHOUSE_API_KEY is set.");
+    } finally {
+      setIsArchiving(false);
+    }
   };
 
   return (
@@ -40,8 +59,59 @@ export default function CapturePage() {
 
       {!capturedData ? (
         <Camera onCapture={handleCapture} />
+      ) : archiveResult ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-8 animate-in fade-in zoom-in duration-700">
+          <div className="w-24 h-24 rounded-full bg-green-500/20 flex items-center justify-center border border-green-500/30 mb-4">
+            <ShieldCheck className="w-12 h-12 text-green-400" />
+          </div>
+          
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl font-bold text-white">Moment Archived</h2>
+            <p className="text-white/50 text-sm max-w-xs mx-auto">
+              Your verified human moment is now permanently stored on the decentralized web.
+            </p>
+          </div>
+
+          <div className="w-full max-w-md bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-white/40">Filecoin CID</span>
+                <a 
+                  href={archiveResult.imageUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-mono text-cyan-400 hover:underline truncate max-w-[180px]"
+                >
+                  {archiveResult.imageHash}
+                </a>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-white/40">Proof Link</span>
+                <a 
+                  href={archiveResult.proofUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-mono text-cyan-400 hover:underline truncate max-w-[180px]"
+                >
+                  view_proof.json
+                </a>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-white/40">Status</span>
+                <span className="text-[10px] font-bold text-green-400 uppercase tracking-widest">Permanent</span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleReset}
+            className="w-full max-w-md py-4 bg-white text-black font-bold rounded-xl hover:bg-white/90 transition-all"
+          >
+            CAPTURE ANOTHER
+          </button>
+        </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-8 animate-in fade-in zoom-in duration-500">
+        <div className={cn("flex-1 flex flex-col items-center justify-center p-6 space-y-8 animate-in fade-in zoom-in duration-500", isArchiving && "opacity-50 pointer-events-none")}>
           <div className="relative group max-w-md w-full aspect-[3/4] rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
             {imageUrl && (
               <img src={imageUrl} alt="Captured" className="w-full h-full object-cover" />
@@ -104,15 +174,27 @@ export default function CapturePage() {
             <div className="flex gap-4">
               <button
                 onClick={handleReset}
+                disabled={isArchiving}
                 className="flex-1 py-4 bg-white/5 text-white/70 font-semibold rounded-xl border border-white/10 hover:bg-white/10 transition-all"
               >
                 RETAKE
               </button>
               <button
+                onClick={handleArchive}
+                disabled={isArchiving}
                 className="flex-[2] py-4 bg-cyan-500 text-black font-bold rounded-xl hover:bg-cyan-400 transition-all shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2"
               >
-                <UploadCloud className="w-5 h-5" />
-                ARCHIVE MOMENT
+                {isArchiving ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                    SEALING...
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud className="w-5 h-5" />
+                    ARCHIVE MOMENT
+                  </>
+                )}
               </button>
             </div>
           </div>
