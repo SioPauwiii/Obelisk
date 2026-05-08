@@ -70,7 +70,7 @@ export const MatrixRain = () => {
             ref={containerRef}
             className="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
         >
-            <pre className="pointer-events-none select-none text-[12px] leading-[14px] font-mono text-cyan-500/20 whitespace-pre">
+            <pre className="pointer-events-none select-none text-[12px] leading-3.5 font-mono text-cyan-500/20 whitespace-pre">
                 {frame}
             </pre>
         </div>
