@@ -157,6 +157,7 @@ export async function GET(req: NextRequest) {
             Math.max(1, parseInt(searchParams.get("limit") ?? "20")),
         );
         const pillar = searchParams.get("pillar");
+        const filterUserId = searchParams.get("user_id");
         const queryText = normalizeSearchTerm(searchParams.get("q"));
         const offset = (page - 1) * limit;
 
@@ -179,6 +180,11 @@ export async function GET(req: NextRequest) {
             )
             .order("created_at", { ascending: false })
             .range(offset, offset + limit - 1);
+
+        // Optional user filter
+        if (filterUserId) {
+            query = query.eq("user_id", filterUserId);
+        }
 
         // Optional pillar filter
         if (

@@ -538,7 +538,7 @@ export default function CapturePage() {
                                                     setLightboxOpen(true);
                                                 }}
                                                 className={cn(
-                                                    "relative h-20 w-32 flex-shrink-0 overflow-hidden rounded-lg border",
+                                                    "relative h-20 w-32 shrink-0 overflow-hidden rounded-lg border",
                                                     i === 0
                                                         ? "border-slate-300"
                                                         : "border-slate-200",

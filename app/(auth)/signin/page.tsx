@@ -163,7 +163,7 @@ export default function LoginPage() {
                             </div>
 
                             {/* ─── Footer ──────────────── */}
-                            <div className="flex flex-wrap items-center gap-1 text-xs text-slate-400 dark:text-slate-500 leading-relaxed mt-4">
+                            <div className="flex flex-wrap items-center gap-1 text-xs text-slate-400 dark:text-slate-500 leading-relaxed mt-4 justify-center">
                                 <p>By connecting, you agree to our</p>
 
                                 <Link
