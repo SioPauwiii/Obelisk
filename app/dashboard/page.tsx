@@ -89,21 +89,7 @@ export default function DashboardFeed() {
 
             {/* --- MAIN FEED CONTENT --- */}
             <main className="flex-1 overflow-y-auto relative">
-                {/* Mobile Header */}
-                <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 p-4 backdrop-blur-md md:hidden">
-                    <div className="flex items-center gap-2">
-                        <Image
-                            src="/obelisk_logo.png"
-                            alt="Logo"
-                            width={28}
-                            height={28}
-                        />
-                        <span className="font-bold text-indigo-950 dark:text-indigo-100">
-                            Obelisk
-                        </span>
-                    </div>
-                    <div className="h-8 w-8 rounded-full bg-linear-to-r from-indigo-500 to-cyan-500" />
-                </header>
+
 
                 {/* Feed Toggle */}
                 <div className="flex border-b border-slate-200 dark:border-slate-800">
@@ -196,29 +182,7 @@ export default function DashboardFeed() {
                 </div>
             </main>
 
-            {/* --- MOBILE BOTTOM NAV (PWA Friendly) --- */}
-            <nav className="fixed bottom-0 left-0 right-0 z-20 flex justify-around border-t border-slate-200 bg-white p-3 pb-safe-area shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] dark:border-slate-800 dark:bg-slate-950 md:hidden">
-                <button className="flex flex-col items-center gap-1 text-indigo-600 dark:text-indigo-400">
-                    <GlobeIcon className="h-6 w-6" />
-                    <span className="text-[10px] font-medium">Feed</span>
-                </button>
-                <button className="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
-                    <MapIcon className="h-6 w-6" />
-                    <span className="text-[10px] font-medium">Map</span>
-                </button>
-                {/* Central "Capture" Button */}
-                <button className="relative -top-6 flex h-14 w-14 items-center justify-center rounded-full bg-linear-to-r from-indigo-600 to-cyan-500 shadow-lg shadow-cyan-500/30 text-white transition-transform active:scale-95">
-                    <CameraIcon className="h-7 w-7" />
-                </button>
-                <button className="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
-                    <AwardIcon className="h-6 w-6" />
-                    <span className="text-[10px] font-medium">SBTs</span>
-                </button>
-                <button className="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">
-                    <UserIcon className="h-6 w-6" />
-                    <span className="text-[10px] font-medium">Profile</span>
-                </button>
-            </nav>
+
         </div>
     );
 }

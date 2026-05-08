@@ -63,8 +63,8 @@ export function Header({
                         <div className="absolute right-0 mt-2 w-52 rounded-xl bg-white border border-slate-200 shadow-lg shadow-slate-200/60 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
                             {/* Username header */}
                             <div className="px-4 py-3 border-b border-slate-100">
-                                <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Signed in as</p>
-                                <p className="text-sm font-semibold text-slate-800 truncate mt-0.5">{username ?? "User"}</p>
+                                <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Obelisk Handle</p>
+                                <p className="text-sm font-semibold text-slate-800 truncate mt-0.5">{"@" + (username ?? "User")}</p>
                             </div>
 
                             <button
