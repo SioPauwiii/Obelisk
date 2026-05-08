@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-    transpilePackages: ["permissionless", "viem", "@privy-io/react-auth", "@privy-io/wagmi"],
+    transpilePackages: [
+        "permissionless",
+        "viem",
+        "@privy-io/react-auth",
+        "@privy-io/wagmi",
+    ],
     images: {
         remotePatterns: [
             {
@@ -10,6 +15,7 @@ const nextConfig: NextConfig = {
             },
         ],
     },
+    turbopack: {},
     webpack: (config, { isServer }) => {
         if (!isServer) {
             config.resolve.fallback = {
