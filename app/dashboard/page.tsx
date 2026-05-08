@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { buildAuthedFetch } from "@/lib/api/authFetch";
+import { useAuth } from "@/hooks/useAuth";
 import { usePrivyAuth } from "@/hooks/usePrivyAuth";
 
 interface MeResponse {
@@ -14,18 +15,24 @@ interface MeResponse {
 export default function DashboardPage() {
     const router = useRouter();
     const queryClient = useQueryClient();
-    const { ready, authenticated, walletAddress, logout, getToken } =
-        usePrivyAuth();
+    const {
+        user,
+        walletAddress,
+        isAuthenticated,
+        isLoading,
+        logout,
+    } = useAuth();
+    const { ready, authenticated, getToken } = usePrivyAuth();
 
     const apiFetch = useMemo(() => buildAuthedFetch(getToken), [getToken]);
 
-    const { data, isLoading, isError } = useQuery({
+    const { data, isLoading: meLoading, isError } = useQuery({
         queryKey: ["me"],
         queryFn: () => apiFetch<MeResponse>("/api/v1/auth/me"),
         enabled: ready && authenticated,
     });
 
-    if (!ready) {
+    if (isLoading) {
         return (
             <div className="grid min-h-svh place-items-center bg-slate-950 font-sans">
                 <div className="flex flex-col items-center gap-4 z-20">
@@ -36,7 +43,7 @@ export default function DashboardPage() {
         );
     }
 
-    if (!authenticated) {
+    if (!isAuthenticated) {
         router.replace("/signin");
         return null;
     }
@@ -60,13 +67,13 @@ export default function DashboardPage() {
                         Dashboard
                     </h1>
                     <p className="mt-2 text-sm text-slate-400">
-                        Protected route using Privy access token verification.
+                        Your authenticated session with Supabase backend integration.
                     </p>
                 </div>
 
                 <div className="space-y-4">
                     {/* Status Messages */}
-                    {isLoading && (
+                    {meLoading && (
                         <div className="flex items-center gap-3 text-sm text-cyan-400">
                             <div className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-900 border-t-cyan-400" />
                             Loading profile...
@@ -75,14 +82,46 @@ export default function DashboardPage() {
 
                     {isError && (
                         <p className="text-sm text-red-400 bg-red-950/30 p-3 rounded-lg border border-red-900/50">
-                            Unable to load profile information.
+                            Unable to load profile from Express backend.
                         </p>
                     )}
 
-                    {/* Data Display Cards */}
+                    {/* Supabase User Info */}
+                    {user && (
+                        <>
+                            <div className="rounded-xl border border-slate-800/80 bg-slate-950/50 p-5 shadow-inner">
+                                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                                    Email
+                                </h3>
+                                <p className="font-mono text-sm text-slate-200 break-all">
+                                    {user.email ?? "Not provided"}
+                                </p>
+                            </div>
+
+                            <div className="rounded-xl border border-slate-800/80 bg-slate-950/50 p-5 shadow-inner">
+                                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                                    Auth Provider
+                                </h3>
+                                <p className="font-mono text-sm text-slate-200 capitalize">
+                                    {user.auth_provider}
+                                </p>
+                            </div>
+
+                            <div className="rounded-xl border border-slate-800/80 bg-slate-950/50 p-5 shadow-inner">
+                                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+                                    Humanity Score
+                                </h3>
+                                <p className="font-mono text-sm text-slate-200">
+                                    {user.humanity_score}
+                                </p>
+                            </div>
+                        </>
+                    )}
+
+                    {/* Wallet Data */}
                     <div className="rounded-xl border border-slate-800/80 bg-slate-950/50 p-5 shadow-inner">
                         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-                            Frontend Wallet
+                            Embedded Wallet
                         </h3>
                         <p className="font-mono text-sm text-slate-200 break-all">
                             {walletAddress ?? "No wallet linked"}
