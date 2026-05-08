@@ -14,10 +14,29 @@ import { z } from "zod";
 const HANDLE_REGEX = /^[a-z][a-z0-9_]{2,19}$/;
 
 const onboardingSchema = z.object({
-    handle: z.string().min(3).max(20).regex(HANDLE_REGEX, "Handle must start with a letter, lowercase alphanumeric and underscores only"),
+    handle: z
+        .string()
+        .min(3)
+        .max(20)
+        .regex(
+            HANDLE_REGEX,
+            "Handle must start with a letter, lowercase alphanumeric and underscores only",
+        ),
     country: z.string().min(1).max(100),
     pillarPreference: z.array(z.string()).min(1),
 });
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+    try {
+        const parts = token.split(".");
+        if (parts.length !== 3) return null;
+        const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+        const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+        return JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
+    } catch {
+        return null;
+    }
+}
 
 export async function POST(req: NextRequest) {
     try {
@@ -30,16 +49,10 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        let userId: string;
-        let oldClaims: Record<string, unknown>;
-        try {
-            const payload = JSON.parse(
-                Buffer.from(accessToken.split(".")[1], "base64").toString(),
-            );
-            userId = payload.sub;
-            oldClaims = payload;
-            if (!userId) throw new Error("No sub in token");
-        } catch {
+        const payload = decodeJwtPayload(accessToken);
+        const userId = typeof payload?.sub === "string" ? payload.sub : null;
+
+        if (!payload || !userId) {
             return NextResponse.json(
                 { error: "Invalid session" },
                 { status: 401 },
@@ -115,7 +128,7 @@ export async function POST(req: NextRequest) {
         const newJwt = await new SignJWT({
             sub: updatedUser.id,
             role: "authenticated",
-            wallet_address: oldClaims.wallet_address ?? null,
+            wallet_address: payload.wallet_address ?? null,
             onboarded: true,
             aud: "authenticated",
             iss: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1`,

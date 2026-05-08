@@ -21,6 +21,7 @@ import {
     type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { reverseGeocode } from "@/lib/utils/geocode";
 import { toastSuccess, toastError } from "@/utils/Toast";
@@ -39,13 +40,24 @@ const PILLARS: { id: string; label: string; icon: LucideIcon }[] = [
 
 type CaptureStep = "camera" | "preview" | "describe" | "archiving" | "done";
 
+type ProofPayload = {
+    payload: {
+        location?: { latitude?: number; longitude?: number } | null;
+        sensors: { orientationDelta: number };
+        hash?: string;
+        timestamp?: number;
+        [k: string]: unknown;
+    };
+    [k: string]: unknown;
+};
+
 export default function CapturePage() {
     const router = useRouter();
 
     const [step, setStep] = useState<CaptureStep>("camera");
     const [capturedData, setCapturedData] = useState<{
         blob: Blob;
-        proof: any;
+        proof: ProofPayload;
     } | null>(null);
     const [imageUrl, setImageUrl] = useState<string | null>(null);
 
@@ -66,7 +78,13 @@ export default function CapturePage() {
     const [archiveProgress, setArchiveProgress] = useState("");
 
     // ── Camera capture handler ────────────────────────
-    const handleCapture = ({ blob, proof }: { blob: Blob; proof: any }) => {
+    const handleCapture = ({
+        blob,
+        proof,
+    }: {
+        blob: Blob;
+        proof: ProofPayload;
+    }) => {
         setCapturedData({ blob, proof });
         setImageUrl(URL.createObjectURL(blob));
         setStep("preview");
@@ -77,13 +95,34 @@ export default function CapturePage() {
         if (step !== "preview" || !capturedData) return;
 
         const loc = capturedData.proof.payload.location;
-        if (loc?.latitude && loc?.longitude) {
-            setIsGeocodingLocation(true);
-            reverseGeocode(loc.latitude, loc.longitude)
-                .then((name) => {
-                    if (name) setLocationName(name);
-                })
-                .finally(() => setIsGeocodingLocation(false));
+        if (
+            loc &&
+            typeof loc.latitude === "number" &&
+            typeof loc.longitude === "number"
+        ) {
+            let mounted = true;
+            const lat = loc.latitude;
+            const lon = loc.longitude;
+            // defer state update to avoid sync setState inside effect
+            const id = window.setTimeout(() => {
+                if (!mounted) return;
+                setIsGeocodingLocation(true);
+                reverseGeocode(lat, lon)
+                    .then((name) => {
+                        if (!mounted) return;
+                        if (name) setLocationName(name);
+                    })
+                    .catch(() => {})
+                    .finally(() => {
+                        if (!mounted) return;
+                        setIsGeocodingLocation(false);
+                    });
+            }, 0);
+
+            return () => {
+                mounted = false;
+                clearTimeout(id);
+            };
         }
     }, [step, capturedData]);
 
@@ -117,26 +156,40 @@ export default function CapturePage() {
             );
             setArchiveResult(result);
 
+            console.log("[Capture] Archive result:", {
+                imageHash: result.imageHash,
+                imageUrl: result.imageUrl,
+                proofHash: result.proofHash,
+                proofUrl: result.proofUrl,
+            });
+
             // 2. Save to Supabase
             setArchiveProgress("Saving to archive...");
             const proof = capturedData.proof;
+            const postPayload = {
+                title,
+                caption,
+                pillar,
+                locationName,
+                latitude: proof.payload.location?.latitude,
+                longitude: proof.payload.location?.longitude,
+                imageCid: result.imageHash,
+                proofCid: result.proofHash,
+                imageUrl: result.imageUrl,
+                proofUrl: result.proofUrl,
+                livenessScore: proof.payload.sensors.orientationDelta,
+                capturedAt:
+                    typeof proof.payload.timestamp === "number"
+                        ? new Date(proof.payload.timestamp).toISOString()
+                        : new Date().toISOString(),
+            };
+
+            console.log("[Capture] Posting to /api/posts:", postPayload);
+
             const res = await fetch("/api/posts", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    title,
-                    caption,
-                    pillar,
-                    locationName,
-                    latitude: proof.payload.location?.latitude,
-                    longitude: proof.payload.location?.longitude,
-                    imageCid: result.imageHash,
-                    proofCid: result.proofHash,
-                    imageUrl: result.imageUrl,
-                    proofUrl: result.proofUrl,
-                    livenessScore: proof.payload.sensors.orientationDelta,
-                    capturedAt: new Date(proof.payload.timestamp).toISOString(),
-                }),
+                body: JSON.stringify(postPayload),
             });
 
             if (!res.ok) {
@@ -144,17 +197,23 @@ export default function CapturePage() {
                 throw new Error(err?.error ?? "Failed to save post");
             }
 
+            const postResult = await res.json();
+            console.log("[Capture] Post created successfully:", postResult);
+
             setArchiveProgress("Done!");
             toastSuccess(
                 "Moment Archived",
                 "Your verified human moment is now permanently stored.",
             );
             setStep("done");
-        } catch (error: any) {
-            console.error("Archival failed:", error);
+        } catch (err) {
+            console.error("Archival failed:", err);
+            const error = err as Error | null;
             toastError(
                 "Archive Failed",
-                error.message ?? "Something went wrong. Please try again.",
+                (error && error.message) ||
+                    String(err) ||
+                    "Something went wrong. Please try again.",
             );
             setStep("describe");
         }
@@ -172,13 +231,6 @@ export default function CapturePage() {
                 >
                     <ArrowLeft className="w-5 h-5 text-white" />
                 </Link>
-
-                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/10 backdrop-blur-xl border border-cyan-500/20">
-                    <ShieldCheck className="w-4 h-4 text-cyan-400" />
-                    <span className="text-[10px] font-mono font-bold text-cyan-400 tracking-wider uppercase">
-                        Humanity Archive v1.0
-                    </span>
-                </div>
             </div>
 
             {/* ── Step: Camera ─────────────────────────── */}
@@ -187,34 +239,50 @@ export default function CapturePage() {
             {/* ── Step: Preview ─────────────────────────── */}
             {step === "preview" && capturedData && (
                 <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-8 animate-in fade-in zoom-in duration-500">
-                    <div className="relative group max-w-md w-full aspect-[3/4] rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+                    <div className="relative group max-w-md w-full aspect-3/4 rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
                         {imageUrl && (
-                            <img
-                                src={imageUrl}
-                                alt="Captured"
-                                className="w-full h-full object-cover"
-                            />
+                            <div className="w-full h-full relative">
+                                <Image
+                                    src={imageUrl}
+                                    alt="Captured"
+                                    fill
+                                    className="object-cover"
+                                    unoptimized
+                                />
+                            </div>
                         )}
 
                         {/* Metadata Overlay */}
-                        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
+                        <div className="absolute bottom-0 left-0 right-0 p-6 bg-linear-to-t from-black/80 to-transparent">
                             <div className="flex flex-col gap-2">
                                 <div className="flex items-center gap-2">
                                     <MapPin className="w-3 h-3 text-cyan-400" />
                                     <span className="text-[10px] font-mono text-white/70">
-                                        {capturedData.proof.payload.location
-                                            ?.latitude.toFixed(4)}
+                                        {typeof capturedData.proof.payload
+                                            .location?.latitude === "number"
+                                            ? capturedData.proof.payload.location.latitude.toFixed(
+                                                  4,
+                                              )
+                                            : "—"}
                                         ,{" "}
-                                        {capturedData.proof.payload.location
-                                            ?.longitude.toFixed(4)}
+                                        {typeof capturedData.proof.payload
+                                            .location?.longitude === "number"
+                                            ? capturedData.proof.payload.location.longitude.toFixed(
+                                                  4,
+                                              )
+                                            : "—"}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Clock className="w-3 h-3 text-cyan-400" />
                                     <span className="text-[10px] font-mono text-white/70">
-                                        {new Date(
-                                            capturedData.proof.payload.timestamp,
-                                        ).toLocaleString()}
+                                        {typeof capturedData.proof.payload
+                                            .timestamp === "number"
+                                            ? new Date(
+                                                  capturedData.proof.payload
+                                                      .timestamp,
+                                              ).toLocaleString()
+                                            : "Unknown"}
                                     </span>
                                 </div>
                             </div>
@@ -242,7 +310,7 @@ export default function CapturePage() {
                                 <span className="text-xs text-white/40">
                                     Image Hash
                                 </span>
-                                <span className="text-[10px] font-mono text-white/60 truncate max-w-[150px]">
+                                <span className="text-[10px] font-mono text-white/60 truncate max-w-37.5">
                                     {capturedData.proof.payload.hash}
                                 </span>
                             </div>
@@ -269,7 +337,7 @@ export default function CapturePage() {
                         </button>
                         <button
                             onClick={() => setStep("describe")}
-                            className="flex-[2] py-4 bg-cyan-500 text-black font-bold rounded-xl hover:bg-cyan-400 transition-all shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2"
+                            className="flex-2 py-4 bg-cyan-500 text-black font-bold rounded-xl hover:bg-cyan-400 transition-all shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2"
                         >
                             CONTINUE
                         </button>
@@ -293,11 +361,13 @@ export default function CapturePage() {
 
                         {/* Thumbnail preview */}
                         {imageUrl && (
-                            <div className="w-full aspect-video rounded-2xl overflow-hidden border border-white/10">
-                                <img
+                            <div className="w-full aspect-video rounded-2xl overflow-hidden border border-white/10 relative">
+                                <Image
                                     src={imageUrl}
                                     alt="Preview"
-                                    className="w-full h-full object-cover"
+                                    fill
+                                    className="object-cover"
+                                    unoptimized
                                 />
                             </div>
                         )}
@@ -404,7 +474,7 @@ export default function CapturePage() {
                             <button
                                 onClick={handleArchive}
                                 disabled={!canArchive}
-                                className="flex-[2] py-4 bg-cyan-500 text-black font-bold rounded-xl hover:bg-cyan-400 transition-all shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                                className="flex-2 py-4 bg-cyan-500 text-black font-bold rounded-xl hover:bg-cyan-400 transition-all shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                                 <UploadCloud className="w-5 h-5" />
                                 ARCHIVE MOMENT
@@ -458,7 +528,7 @@ export default function CapturePage() {
                                     href={archiveResult.imageUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-[10px] font-mono text-cyan-400 hover:underline truncate max-w-[180px]"
+                                    className="text-[10px] font-mono text-cyan-400 hover:underline truncate max-w-45"
                                 >
                                     {archiveResult.imageHash}
                                 </a>
@@ -471,7 +541,7 @@ export default function CapturePage() {
                                     href={archiveResult.proofUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-[10px] font-mono text-cyan-400 hover:underline truncate max-w-[180px]"
+                                    className="text-[10px] font-mono text-cyan-400 hover:underline truncate max-w-45"
                                 >
                                     view_proof.json
                                 </a>
@@ -496,7 +566,7 @@ export default function CapturePage() {
                         </button>
                         <button
                             onClick={() => router.push("/feed")}
-                            className="flex-[2] py-4 bg-white text-black font-bold rounded-xl hover:bg-white/90 transition-all flex items-center justify-center gap-2"
+                            className="flex-2 py-4 bg-white text-black font-bold rounded-xl hover:bg-white/90 transition-all flex items-center justify-center gap-2"
                         >
                             VIEW IN FEED
                         </button>
