@@ -12,13 +12,8 @@ import GoogleIcon from "@/public/googleicon";
 
 export default function LoginPage() {
     const router = useRouter();
-    const {
-        login,
-        isAuthenticated,
-        isLoading,
-        authError,
-        clearError,
-    } = useAuth();
+    const { login, isAuthenticated, isLoading, authError, clearError } =
+        useAuth();
     const { initOAuth } = useLoginWithOAuth();
     const [activeMethod, setActiveMethod] = useState<string | null>(null);
 
@@ -28,13 +23,6 @@ export default function LoginPage() {
             router.replace("/dashboard");
         }
     }, [isAuthenticated, isLoading, router]);
-
-    // Clear active method on error
-    useEffect(() => {
-        if (authError) {
-            setActiveMethod(null);
-        }
-    }, [authError]);
 
     const handleWalletLogin = () => {
         clearError();
@@ -137,7 +125,7 @@ export default function LoginPage() {
                                     disabled={!!activeMethod || isLoading}
                                     className="w-full rounded-lg bg-linear-to-r from-indigo-600 to-cyan-500 px-4 py-3 text-base font-semibold text-white shadow-lg shadow-cyan-500/20 transition-all hover:from-indigo-500 hover:to-cyan-400 hover:shadow-xl hover:shadow-cyan-500/30 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-slate-950"
                                 >
-                                    {activeMethod === "wallet" ? (
+                                    {activeMethod === "wallet" && !authError ? (
                                         <span className="flex items-center justify-center gap-2">
                                             <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                                             Connecting...
@@ -156,7 +144,7 @@ export default function LoginPage() {
                                     disabled={!!activeMethod || isLoading}
                                     className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base font-semibold text-slate-800 transition-colors hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus:ring-offset-slate-950"
                                 >
-                                    {activeMethod === "google" ? (
+                                    {activeMethod === "google" && !authError ? (
                                         <span className="flex items-center justify-center gap-2">
                                             <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
                                             Connecting...
