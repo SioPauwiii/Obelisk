@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { buildAuthedFetch } from "@/lib/api/authFetch";
@@ -32,6 +32,13 @@ export default function DashboardPage() {
         enabled: ready && authenticated,
     });
 
+    // Redirect unauthenticated users — must be in useEffect, not during render
+    useEffect(() => {
+        if (!isLoading && !isAuthenticated) {
+            router.replace("/signin");
+        }
+    }, [isLoading, isAuthenticated, router]);
+
     if (isLoading) {
         return (
             <div className="grid min-h-svh place-items-center bg-slate-950 font-sans">
@@ -44,7 +51,7 @@ export default function DashboardPage() {
     }
 
     if (!isAuthenticated) {
-        router.replace("/signin");
+        // useEffect above handles the redirect; render nothing while navigating
         return null;
     }
 
