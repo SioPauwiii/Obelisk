@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Lightbox from "@/components/UI/Lightbox";
 import { useRouter } from "next/navigation";
 import { Camera } from "@/components/camera/Camera";
 import {
@@ -17,6 +18,7 @@ import {
     HeartHandshake,
     ArrowUpRight,
     type LucideIcon,
+    Trash,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -85,6 +87,8 @@ export default function CapturePage() {
     );
     const activeCapture =
         selectedCaptures[0] ?? captures[captures.length - 1] ?? null;
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [lightboxIndex, setLightboxIndex] = useState(0);
 
     // ── Camera capture handler ────────────────────────
     const handleCapture = ({
@@ -143,36 +147,58 @@ export default function CapturePage() {
         if (step !== "describe" || !activeCapture) return;
 
         const loc = activeCapture.proof.payload.location;
-        if (
-            loc &&
-            typeof loc.latitude === "number" &&
-            typeof loc.longitude === "number"
-        ) {
-            let mounted = true;
+        let mounted = true;
+        async function detect() {
+            if (
+                !loc ||
+                typeof loc.latitude !== "number" ||
+                typeof loc.longitude !== "number"
+            ) {
+                return;
+            }
             const lat = loc.latitude;
             const lon = loc.longitude;
-            // defer state update to avoid sync setState inside effect
-            const id = window.setTimeout(() => {
+            setIsGeocodingLocation(true);
+            try {
+                const name = await reverseGeocode(lat, lon);
                 if (!mounted) return;
-                setIsGeocodingLocation(true);
-                reverseGeocode(lat, lon)
-                    .then((name) => {
-                        if (!mounted) return;
-                        if (name) setLocationName(name);
-                    })
-                    .catch(() => {})
-                    .finally(() => {
-                        if (!mounted) return;
-                        setIsGeocodingLocation(false);
-                    });
-            }, 0);
-
-            return () => {
-                mounted = false;
-                clearTimeout(id);
-            };
+                if (name) setLocationName(name);
+            } catch {}
+            if (!mounted) return;
+            setIsGeocodingLocation(false);
         }
+
+        // defer to next tick to avoid sync setState-in-effect
+        const id = window.setTimeout(() => {
+            void detect();
+        }, 0);
+        return () => {
+            mounted = false;
+            clearTimeout(id);
+        };
     }, [step, activeCapture]);
+
+    const hasCoords = Boolean(
+        activeCapture?.proof.payload.location &&
+        typeof activeCapture.proof.payload.location.latitude === "number" &&
+        typeof activeCapture.proof.payload.location.longitude === "number",
+    );
+
+    const retryGeocode = async () => {
+        const loc = activeCapture?.proof.payload.location;
+        if (
+            !loc ||
+            typeof loc.latitude !== "number" ||
+            typeof loc.longitude !== "number"
+        )
+            return;
+        setIsGeocodingLocation(true);
+        try {
+            const name = await reverseGeocode(loc.latitude, loc.longitude);
+            if (name) setLocationName(name);
+        } catch {}
+        setIsGeocodingLocation(false);
+    };
 
     // ── Reset everything ──────────────────────────────
     const handleReset = () => {
@@ -278,18 +304,25 @@ export default function CapturePage() {
         }
     };
 
-    const canArchive = title.trim().length >= 3 && pillar !== "";
+    const canArchive = title.trim().length >= 3 && pillar !== "" && hasCoords;
 
     return (
         <main className="fixed inset-0 bg-slate-50 dark:bg-slate-950 flex flex-col font-sans">
             {/* Header */}
             <div className="absolute top-0 left-0 right-0 z-50 p-6 flex items-center justify-between pointer-events-none">
-                <Link
-                    href="/feed"
+                <button
+                    type="button"
+                    onClick={() => {
+                        if (step === "camera") {
+                            router.push("/feed");
+                        } else {
+                            setStep("camera");
+                        }
+                    }}
                     className="p-3 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 pointer-events-auto hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-sm text-slate-700 dark:text-slate-300"
                 >
                     <ArrowLeft className="w-5 h-5" />
-                </Link>
+                </button>
             </div>
 
             {/* ── Step: Camera ─────────────────────────── */}
@@ -303,87 +336,130 @@ export default function CapturePage() {
             )}
 
             {isGalleryOpen && (
-                <div className="absolute inset-0 z-60 bg-black/80 backdrop-blur-xl px-4 py-6 overflow-y-auto">
-                    <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
-                        <div className="flex items-center justify-between">
+                <div className="fixed inset-0 z-60 flex items-center justify-center px-4 py-6">
+                    <div
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={() => setIsGalleryOpen(false)}
+                    />
+                    <div className="absolute inset-0 z-10 bg-white flex flex-col">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
                             <div>
-                                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">
+                                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
                                     Gallery
                                 </p>
-                                <h2 className="mt-2 text-2xl font-bold text-white">
-                                    Pick a photo to post
-                                </h2>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => setIsGalleryOpen(false)}
-                                className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10"
-                            >
-                                Close
-                            </button>
+                            <div className="flex items-center gap-3">
+                                <div className="text-sm text-slate-600 hidden sm:flex">
+                                    {captures.length} total
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsGalleryOpen(false)}
+                                    className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                                >
+                                    Close
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                            {captures.map((capture) => {
-                                const selected = selectedCaptureIds.includes(
-                                    capture.id,
-                                );
-                                return (
-                                    <div
-                                        key={capture.id}
-                                        className={cn(
-                                            "group relative overflow-hidden rounded-2xl border bg-white/5",
-                                            selected
-                                                ? "border-emerald-400/70 ring-2 ring-emerald-400/30"
-                                                : "border-white/10",
-                                        )}
-                                    >
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                handleToggleCapture(capture.id)
-                                            }
-                                            className="block w-full"
+                        <div className="p-6 overflow-y-auto flex-1">
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10">
+                                {captures.map((capture, idx) => {
+                                    const selected =
+                                        selectedCaptureIds.includes(capture.id);
+                                    return (
+                                        <div
+                                            key={capture.id}
+                                            className={cn(
+                                                "relative overflow-hidden rounded-lg border bg-white/50",
+                                                selected
+                                                    ? "border-emerald-300 shadow-lg"
+                                                    : "border-slate-200 shadow-sm",
+                                            )}
                                         >
-                                            <Image
-                                                src={capture.imageUrl}
-                                                alt="Gallery capture"
-                                                width={800}
-                                                height={1000}
-                                                className="h-56 w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                                                unoptimized
-                                            />
-                                        </button>
-                                        <div className="absolute left-3 top-3 rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
-                                            {selected
-                                                ? "Selected"
-                                                : "Tap to select"}
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setLightboxIndex(idx);
+                                                    setLightboxOpen(true);
+                                                }}
+                                                className="block w-full aspect-square relative"
+                                            >
+                                                <Image
+                                                    src={capture.imageUrl}
+                                                    alt="Gallery capture"
+                                                    fill
+                                                    className="object-cover"
+                                                    unoptimized
+                                                />
+                                            </button>
+
+                                            {/* Selection badge - toggles selection only */}
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleToggleCapture(
+                                                        capture.id,
+                                                    );
+                                                }}
+                                                aria-pressed={selected}
+                                                className={cn(
+                                                    "absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-full border transition-colors",
+                                                    selected
+                                                        ? "bg-emerald-500 border-emerald-500 text-white"
+                                                        : "bg-white/90 border-slate-200 text-slate-700",
+                                                )}
+                                            >
+                                                {selected ? (
+                                                    <Check className="w-4 h-4" />
+                                                ) : (
+                                                    <svg
+                                                        className="w-4 h-4"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                    >
+                                                        <circle
+                                                            cx="12"
+                                                            cy="12"
+                                                            r="6"
+                                                            stroke="currentColor"
+                                                            strokeWidth="1.5"
+                                                        />
+                                                    </svg>
+                                                )}
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleRemoveCapture(
+                                                        capture.id,
+                                                    );
+                                                }}
+                                                className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-1 text-xs text-slate-600 border border-slate-200 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                            >
+                                                <Trash className="w-3.5 h-3.5" />
+                                            </button>
                                         </div>
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                handleRemoveCapture(capture.id)
-                                            }
-                                            className="absolute right-3 top-3 rounded-full bg-black/70 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white/80 transition-colors hover:bg-red-500 hover:text-white"
-                                        >
-                                            Remove
-                                        </button>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
 
-                        <div className="sticky bottom-0 mt-2 flex flex-col gap-3 rounded-3xl border border-white/10 bg-black/60 p-4 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
-                            <div className="text-sm text-white/70">
+                        <div className="sticky bottom-0 z-20 flex items-center justify-between gap-3 border-t border-slate-100 bg-white px-6 py-4 rounded-b-2xl max-sm:flex-col">
+                            <div className="text-sm text-slate-700">
                                 {selectedCaptures.length > 0
-                                    ? `${selectedCaptures.length} image${selectedCaptures.length === 1 ? "" : "s"} selected for posting`
-                                    : "No image selected"}
+                                    ? `${selectedCaptures.length} selected`
+                                    : "No images selected"}
                             </div>
-                            <div className="flex gap-3">
+                            <div className="flex items-center gap-3">
                                 <button
                                     type="button"
                                     onClick={handleReset}
-                                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+                                    className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
                                 >
                                     Clear All
                                 </button>
@@ -391,7 +467,12 @@ export default function CapturePage() {
                                     type="button"
                                     onClick={handlePostSelected}
                                     disabled={!selectedCaptures.length}
-                                    className="rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-bold text-black transition-colors hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className={cn(
+                                        "rounded-md px-4 py-2 text-sm font-semibold transition-colors",
+                                        selectedCaptures.length
+                                            ? "bg-emerald-500 text-white hover:bg-emerald-600"
+                                            : "bg-emerald-300 text-white cursor-not-allowed opacity-60",
+                                    )}
                                 >
                                     Post Selected
                                 </button>
@@ -420,18 +501,61 @@ export default function CapturePage() {
                             </p>
                         </div>
 
-                        {/* Thumbnail preview */}
+                        {/* Large preview + thumbnails (click to view all) */}
                         {activeCapture && (
-                            <div className="w-full aspect-video rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 relative shadow-sm">
-                                <Image
-                                    src={activeCapture.imageUrl}
-                                    alt="Preview"
-                                    fill
-                                    className="object-cover"
-                                    unoptimized
-                                />
-                                <div className="absolute inset-0 bg-black/5 ring-1 ring-inset ring-black/10 dark:ring-white/10 rounded-2xl" />
-                            </div>
+                            <>
+                                <div className="w-full aspect-video rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 relative shadow-sm">
+                                    <Image
+                                        src={activeCapture.imageUrl}
+                                        alt="Preview"
+                                        fill
+                                        className="object-cover"
+                                        unoptimized
+                                    />
+                                    <div className="absolute inset-0 bg-black/5 ring-1 ring-inset ring-black/10 dark:ring-white/10 rounded-2xl" />
+
+                                    {selectedCaptures.length > 1 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setLightboxIndex(0);
+                                                setLightboxOpen(true);
+                                            }}
+                                            className="absolute right-3 top-3 rounded-md bg-white/90 px-3 py-2 text-sm font-medium text-slate-700 border border-slate-200 hover:bg-slate-100 transition-colors"
+                                        >
+                                            View all
+                                        </button>
+                                    )}
+                                </div>
+
+                                {selectedCaptures.length > 1 && (
+                                    <div className="mt-3 flex items-center gap-3 overflow-x-auto no-scrollbar">
+                                        {selectedCaptures.map((c, i) => (
+                                            <button
+                                                key={c.id}
+                                                onClick={() => {
+                                                    setLightboxIndex(i);
+                                                    setLightboxOpen(true);
+                                                }}
+                                                className={cn(
+                                                    "relative h-20 w-32 flex-shrink-0 overflow-hidden rounded-lg border",
+                                                    i === 0
+                                                        ? "border-slate-300"
+                                                        : "border-slate-200",
+                                                )}
+                                            >
+                                                <Image
+                                                    src={c.imageUrl}
+                                                    alt={`thumb-${i}`}
+                                                    fill
+                                                    className="object-cover"
+                                                    unoptimized
+                                                />
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </>
                         )}
 
                         {/* Title */}
@@ -507,19 +631,38 @@ export default function CapturePage() {
                             </label>
                             <div className="relative">
                                 <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input
-                                    type="text"
-                                    value={locationName}
-                                    onChange={(e) =>
-                                        setLocationName(e.target.value)
-                                    }
-                                    placeholder={
-                                        isGeocodingLocation
-                                            ? "Detecting location..."
-                                            : "Location name"
-                                    }
-                                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-11 pr-4 py-3.5 text-slate-900 dark:text-slate-100 text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all shadow-sm"
-                                />
+                                <div className="flex gap-2 items-center">
+                                    <input
+                                        type="text"
+                                        value={locationName}
+                                        readOnly
+                                        placeholder={
+                                            isGeocodingLocation
+                                                ? "Detecting location..."
+                                                : hasCoords
+                                                  ? "Location detected"
+                                                  : "Location required — enable device location"
+                                        }
+                                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-11 pr-4 py-3.5 text-slate-900 dark:text-slate-100 text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 transition-all shadow-sm"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={retryGeocode}
+                                        disabled={
+                                            !hasCoords || isGeocodingLocation
+                                        }
+                                        className={cn(
+                                            "px-3 py-2 rounded-xl text-sm font-semibold border",
+                                            isGeocodingLocation
+                                                ? "bg-slate-50 border-slate-200 text-slate-400 cursor-wait"
+                                                : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50",
+                                        )}
+                                    >
+                                        {isGeocodingLocation
+                                            ? "Detecting…"
+                                            : "Retry"}
+                                    </button>
+                                </div>
                                 {isGeocodingLocation && (
                                     <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 animate-spin" />
                                 )}
@@ -548,6 +691,25 @@ export default function CapturePage() {
             )}
 
             {/* ── Step: Archiving (Progress) ───────────── */}
+            {lightboxOpen && (
+                <Lightbox
+                    images={
+                        isGalleryOpen
+                            ? captures.map((c) => c.imageUrl)
+                            : selectedCaptures.map((c) => c.imageUrl)
+                    }
+                    initialIndex={Math.max(
+                        0,
+                        Math.min(
+                            lightboxIndex,
+                            (isGalleryOpen
+                                ? captures.length
+                                : selectedCaptures.length) - 1,
+                        ),
+                    )}
+                    onClose={() => setLightboxOpen(false)}
+                />
+            )}
             {step === "archiving" && (
                 <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-8 animate-in fade-in duration-300">
                     <div className="relative w-24 h-24 flex items-center justify-center">
@@ -583,7 +745,9 @@ export default function CapturePage() {
                         </h2>
                         <p className="text-slate-500 dark:text-slate-400 text-sm max-w-65 mx-auto leading-relaxed">
                             {archiveResult.imageUrls.length} image
-                            {archiveResult.imageUrls.length === 1 ? "" : "s"}{" "}
+                            {archiveResult.imageUrls.length === 1
+                                ? ""
+                                : "s"}{" "}
                             archived on the decentralized web.
                         </p>
                     </div>

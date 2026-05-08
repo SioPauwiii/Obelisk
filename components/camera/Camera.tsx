@@ -67,6 +67,7 @@ export const Camera: React.FC<CameraProps> = ({
         "unknown" | "granted" | "denied" | "prompt"
     >("unknown");
     const [starting, setStarting] = useState(false);
+    const [bootstrappingCamera, setBootstrappingCamera] = useState(true);
 
     useEffect(() => {
         if (isPermissionGranted && stream) {
@@ -79,7 +80,14 @@ export const Camera: React.FC<CameraProps> = ({
     }, [isPermissionGranted, stream]);
 
     useEffect(() => {
-        autoStartIfPermitted();
+        let active = true;
+        void autoStartIfPermitted().finally(() => {
+            if (!active) return;
+            setBootstrappingCamera(false);
+        });
+        return () => {
+            active = false;
+        };
     }, [autoStartIfPermitted]);
 
     // Query camera permission state to provide helpful UX (denied vs prompt)
@@ -189,7 +197,7 @@ export const Camera: React.FC<CameraProps> = ({
     return (
         <div
             className={cn(
-                "relative w-full h-full bg-black overflow-hidden flex flex-col items-center justify-center",
+                "relative w-full h-full overflow-hidden flex flex-col items-center justify-center bg-linear-to-b from-slate-50 to-slate-100",
                 className,
             )}
         >
@@ -254,13 +262,13 @@ export const Camera: React.FC<CameraProps> = ({
                         {/* Bottom Bar: Actions */}
                         <div className="flex flex-col items-center gap-8">
                             {/* Liveness Gauge */}
-                            <div className="w-48 h-1.5 bg-white/10 rounded-full overflow-hidden border border-white/5">
+                            <div className="w-48 h-1.5 rounded-full overflow-hidden border border-slate-300/90 bg-white/80 shadow-sm">
                                 <div
                                     className={cn(
                                         "h-full transition-all duration-300",
                                         livenessCheck
                                             ? "bg-cyan-500"
-                                            : "bg-yellow-500",
+                                            : "bg-amber-500",
                                     )}
                                     style={{
                                         width: `${Math.min(livenessScore * 10, 100)}%`,
@@ -269,7 +277,7 @@ export const Camera: React.FC<CameraProps> = ({
                             </div>
 
                             {captureLimitReached && (
-                                <div className="px-4 py-2 rounded-lg bg-red-500/15 border border-red-400/30 text-red-200 text-xs font-medium text-center">
+                                <div className="px-4 py-2 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-medium text-center shadow-sm">
                                     Capture limit reached for now.
                                     {nextCaptureResetAt
                                         ? ` Try again after ${new Date(nextCaptureResetAt).toLocaleString()}.`
@@ -277,7 +285,7 @@ export const Camera: React.FC<CameraProps> = ({
                                 </div>
                             )}
 
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-8">
                                 <button
                                     onClick={
                                         capturedImageUrl ? onRetake : stopCamera
@@ -288,9 +296,9 @@ export const Camera: React.FC<CameraProps> = ({
                                             ? "Retake photo"
                                             : "Stop camera"
                                     }
-                                    className="p-3 rounded-full bg-white/6 border border-white/8 hover:bg-white/8 transition-colors shrink-0"
+                                    className="p-3 rounded-full bg-white/90 border border-slate-200 hover:bg-white transition-colors shadow-sm shrink-0"
                                 >
-                                    <RotateCw className="w-6 h-6 text-white/70" />
+                                    <RotateCw className="w-6 h-6 text-slate-600" />
                                 </button>
 
                                 <div className="relative">
@@ -347,10 +355,10 @@ export const Camera: React.FC<CameraProps> = ({
                                     disabled={!capturedImageUrl}
                                     aria-label="Open archive preview"
                                     className={cn(
-                                        "relative overflow-hidden w-16 h-16 rounded-2xl border shadow-[0_10px_30px_rgba(0,0,0,0.25)] transition-transform shrink-0",
+                                        "relative overflow-hidden w-16 h-16 rounded-2xl border transition-transform shrink-0 shadow-sm",
                                         capturedImageUrl
-                                            ? "border-emerald-400/40 bg-black/50 hover:scale-105"
-                                            : "border-white/10 bg-white/5 opacity-40 cursor-not-allowed",
+                                            ? "border-emerald-300/70 bg-white/95 hover:scale-105"
+                                            : "border-slate-200 bg-white/80 opacity-60 cursor-not-allowed",
                                     )}
                                 >
                                     {capturedImageUrl ? (
@@ -362,13 +370,13 @@ export const Camera: React.FC<CameraProps> = ({
                                                 width={64}
                                                 height={64}
                                             />
-                                            <div className="absolute inset-0 bg-linear-to-t from-black/45 via-transparent to-transparent" />
+                                            <div className="absolute inset-0 bg-linear-to-t from-slate-900/25 via-transparent to-transparent" />
                                             <div className="absolute bottom-1.5 right-1.5 rounded-full bg-white/90 p-1">
                                                 <ArrowUpRight className="w-3 h-3 text-black" />
                                             </div>
                                         </>
                                     ) : (
-                                        <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold uppercase tracking-widest text-white/30">
+                                        <div className="flex h-full w-full items-center justify-center text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                                             Gallery
                                         </div>
                                     )}
@@ -378,75 +386,88 @@ export const Camera: React.FC<CameraProps> = ({
                     </div>
                 </div>
             ) : (
-                <div className="flex flex-col items-center gap-6 px-8 text-center max-w-lg">
-                    <div className="w-20 h-20 rounded-full bg-linear-to-br from-cyan-700/20 to-cyan-400/10 flex items-center justify-center border border-white/6">
-                        <CameraIcon className="w-10 h-10 text-cyan-300" />
-                    </div>
-                    <div className="space-y-2">
-                        <h2 className="text-lg font-semibold text-white">
-                            Live Capture
-                        </h2>
-                        <p className="text-sm text-white/60 leading-relaxed">
-                            We take a live photo and seal it cryptographically.
-                            Allow camera and motion sensors to continue.
-                        </p>
-                    </div>
-
-                    {error && (
-                        <div className="flex items-center gap-2 text-red-400 bg-red-400/8 px-4 py-2 rounded-lg border border-red-400/20">
-                            <AlertCircle className="w-4 h-4" />
-                            <span className="text-xs">{error}</span>
+                <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-8 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+                    <div className="flex flex-col items-center gap-6 text-center">
+                        <div className="w-20 h-20 rounded-full bg-linear-to-br from-cyan-100 to-sky-100 flex items-center justify-center border border-cyan-200/80">
+                            {bootstrappingCamera ||
+                            (permissionState === "granted" && !error) ? (
+                                <Loader2 className="w-10 h-10 text-cyan-600 animate-spin" />
+                            ) : (
+                                <CameraIcon className="w-10 h-10 text-cyan-600" />
+                            )}
                         </div>
-                    )}
-
-                    {/* Permission specific actions */}
-                    {permissionState === "denied" ? (
-                        <div className="space-y-3">
-                            <p className="text-sm text-white/50">
-                                Camera access is blocked. To enable, open your
-                                browser site settings and allow Camera
-                                permission.
+                        <div className="space-y-2">
+                            <h2 className="text-lg font-semibold text-slate-900">
+                                Live Capture
+                            </h2>
+                            <p className="text-sm text-slate-600 leading-relaxed">
+                                {bootstrappingCamera ||
+                                (permissionState === "granted" && !error)
+                                    ? "Starting camera..."
+                                    : "Take a live photo and seal it cryptographically. Allow camera and motion sensors to continue."}
                             </p>
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={async () => {
-                                        try {
-                                            await navigator.clipboard.writeText(
-                                                window.location.href,
-                                            );
-                                        } catch {}
-                                    }}
-                                    className="px-4 py-2 rounded-lg bg-white/6 hover:bg-white/8 transition-colors"
-                                >
-                                    Copy site URL
-                                </button>
+                        </div>
+
+                        {error && (
+                            <div className="flex items-center gap-2 text-red-700 bg-red-50 px-4 py-2 rounded-lg border border-red-200 w-full">
+                                <AlertCircle className="w-4 h-4 shrink-0" />
+                                <span className="text-xs text-left">
+                                    {error}
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Permission specific actions */}
+                        {bootstrappingCamera ||
+                        (permissionState === "granted" && !error) ? (
+                            <div className="w-full">
+                                <div className="w-full py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 font-semibold">
+                                    Preparing camera...
+                                </div>
+                            </div>
+                        ) : permissionState === "denied" ? (
+                            <div className="space-y-3 w-full">
+                                <p className="text-sm text-slate-600">
+                                    Camera access is blocked. Open browser site
+                                    settings and allow camera permission.
+                                </p>
+                                <div className="flex gap-3 justify-center">
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                await navigator.clipboard.writeText(
+                                                    window.location.href,
+                                                );
+                                            } catch {}
+                                        }}
+                                        className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200 transition-colors"
+                                    >
+                                        Copy site URL
+                                    </button>
+                                    <button
+                                        onClick={handleStart}
+                                        type="button"
+                                        className="px-4 py-2 rounded-lg bg-cyan-500 text-white font-semibold hover:bg-cyan-600 transition-colors"
+                                    >
+                                        Retry
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="w-full">
                                 <button
                                     onClick={handleStart}
                                     type="button"
-                                    className="px-4 py-2 rounded-lg bg-cyan-500 text-black font-semibold hover:bg-cyan-400 transition-colors"
+                                    disabled={starting}
+                                    className="w-full py-3 bg-cyan-500 text-white font-bold rounded-xl hover:bg-cyan-600 transition-all shadow-[0_8px_24px_rgba(6,182,212,0.25)]"
                                 >
-                                    Retry
+                                    {starting
+                                        ? "Starting camera…"
+                                        : "Enable Camera"}
                                 </button>
                             </div>
-                        </div>
-                    ) : (
-                        <div className="w-full">
-                            <button
-                                onClick={handleStart}
-                                type="button"
-                                disabled={starting}
-                                className="w-full py-3 bg-cyan-500 text-black font-bold rounded-xl hover:bg-cyan-400 transition-all shadow-[0_8px_30px_rgba(6,182,212,0.24)]"
-                            >
-                                {starting
-                                    ? "Starting camera…"
-                                    : "Enable Camera"}
-                            </button>
-                            <p className="text-xs text-white/40 mt-3">
-                                Daily limit: {captureLimit} verified captures
-                                per 24 hours. Used: {capturesUsed}.
-                            </p>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             )}
 
