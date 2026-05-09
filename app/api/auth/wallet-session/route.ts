@@ -30,6 +30,26 @@ async function verifyToken(token: string) {
     return privy.utils().auth().verifyAccessToken(token);
 }
 
+function resolveWalletAddress(privyUser: {
+    wallet?: { address?: string | null };
+    linked_accounts?: Array<{
+        type?: string;
+        address?: string | null;
+        wallet_client_type?: string;
+    }>;
+}) {
+    if (typeof privyUser.wallet?.address === "string") {
+        return privyUser.wallet.address.toLowerCase();
+    }
+
+    const walletAccount = privyUser.linked_accounts?.find(
+        (account) =>
+            account.type === "wallet" && typeof account.address === "string",
+    );
+
+    return walletAccount?.address?.toLowerCase() ?? null;
+}
+
 // ─────────────────────────────────────────────────────
 // POST /api/auth/wallet-session
 //
@@ -48,7 +68,7 @@ export async function POST(req: NextRequest) {
         if (!token) {
             return NextResponse.json(
                 { error: "Missing authorization header" },
-                { status: 401 }
+                { status: 401 },
             );
         }
 
@@ -58,7 +78,7 @@ export async function POST(req: NextRequest) {
         } catch {
             return NextResponse.json(
                 { error: "Invalid or expired Privy token" },
-                { status: 401 }
+                { status: 401 },
             );
         }
 
@@ -72,11 +92,13 @@ export async function POST(req: NextRequest) {
         try {
             const privyUser = await privy.users()._get(privyDid);
 
+            walletAddress = resolveWalletAddress(privyUser);
+
             for (const account of privyUser.linked_accounts) {
                 if (
+                    !walletAddress &&
                     account.type === "wallet" &&
-                    "wallet_client_type" in account &&
-                    account.wallet_client_type === "privy"
+                    account.address
                 ) {
                     walletAddress = account.address.toLowerCase();
                 }
@@ -178,7 +200,7 @@ export async function POST(req: NextRequest) {
                 console.error("Failed to insert user:", insertError);
                 return NextResponse.json(
                     { error: "Failed to create user record" },
-                    { status: 500 }
+                    { status: 500 },
                 );
             }
 
@@ -190,7 +212,7 @@ export async function POST(req: NextRequest) {
         if (!jwtSecret) {
             return NextResponse.json(
                 { error: "Server configuration error" },
-                { status: 500 }
+                { status: 500 },
             );
         }
 
@@ -227,7 +249,7 @@ export async function POST(req: NextRequest) {
         console.error("Wallet session error:", error);
         return NextResponse.json(
             { error: "Internal server error" },
-            { status: 500 }
+            { status: 500 },
         );
     }
 }
@@ -245,7 +267,7 @@ export async function PATCH(req: NextRequest) {
         if (!token) {
             return NextResponse.json(
                 { error: "Unauthorized" },
-                { status: 401 }
+                { status: 401 },
             );
         }
 
@@ -255,7 +277,7 @@ export async function PATCH(req: NextRequest) {
         } catch {
             return NextResponse.json(
                 { error: "Invalid token" },
-                { status: 401 }
+                { status: 401 },
             );
         }
 
@@ -264,7 +286,7 @@ export async function PATCH(req: NextRequest) {
         if (!newWallet || typeof newWallet !== "string") {
             return NextResponse.json(
                 { error: "Missing walletAddress" },
-                { status: 400 }
+                { status: 400 },
             );
         }
 
@@ -289,7 +311,7 @@ export async function PATCH(req: NextRequest) {
     } catch {
         return NextResponse.json(
             { error: "Internal server error" },
-            { status: 500 }
+            { status: 500 },
         );
     }
 }
