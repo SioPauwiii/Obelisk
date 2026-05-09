@@ -98,7 +98,9 @@ export function useAuth(): UseAuth {
                         Authorization: `Bearer ${accessToken}`,
                         "Content-Type": "application/json",
                     },
-                    // No body — server gets everything from the Privy token
+                    body: JSON.stringify({
+                        walletAddress: resolvedWalletAddress,
+                    }),
                 });
 
                 const payload = await res.json().catch(() => null);
