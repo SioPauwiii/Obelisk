@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
         "@privy-io/react-auth",
         "@privy-io/wagmi",
     ],
+    allowedDevOrigins: [
+        "192.168.1.79",
+        "vanita-unbeseeming-connaturally.ngrok-free.dev",
+    ],
     images: {
         remotePatterns: [
             {
